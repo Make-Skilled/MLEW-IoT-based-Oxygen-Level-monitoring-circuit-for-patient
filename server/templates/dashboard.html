@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Health Monitoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .dashboard-header h2 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .dashboard-header h2 i {
+        background: var(--gradient-1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-right: 0.8rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    }
+    
+    .stat-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+    
+    .stat-icon.heart {
+        background: linear-gradient(135deg, #FF6B6B, #FF8E8E);
+    }
+    
+    .stat-icon.oxygen {
+        background: linear-gradient(135deg, #4ECDC4, #45B7AF);
+    }
+    
+    .stat-icon.temp {
+        background: linear-gradient(135deg, #FFD93D, #FFE566);
+    }
+    
+    .stat-icon.bp {
+        background: linear-gradient(135deg, #6C63FF, #8A84FF);
+    }
+    
+    .stat-title {
+        color: #666;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--dark-color);
+        margin: 0;
+    }
+    
+    .stat-change {
+        font-size: 0.9rem;
+        color: #666;
+        margin: 0.5rem 0 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .stat-change.positive {
+        color: #4CAF50;
+    }
+    
+    .stat-change.negative {
+        color: #FF6B6B;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .chart-title {
+        font-size: 1.2rem;
+        color: var(--dark-color);
+        margin: 0;
+    }
+    
+    .chart-controls {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .btn-chart {
+        padding: 0.5rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: white;
+        color: #666;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-chart.active {
+        background: var(--gradient-1);
+        color: white;
+        border-color: transparent;
+    }
+    
+    .btn-chart:hover {
+        background: #f8f9fa;
+    }
+    
+    .btn-chart.active:hover {
+        background: var(--gradient-1);
+    }
+    
+    .chart-wrapper {
+        position: relative;
+        height: 300px;
+    }
+    
+    .alert-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+    }
+    
+    .alert-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #FF6B6B, #FF8E8E);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1.5rem;
+        color: white;
+    }
+    
+    .alert-content {
+        flex: 1;
+    }
+    
+    .alert-title {
+        font-size: 1.1rem;
+        color: var(--dark-color);
+        margin: 0 0 0.5rem;
+    }
+    
+    .alert-message {
+        color: #666;
+        margin: 0;
+    }
+    
+    .alert-time {
+        font-size: 0.9rem;
+        color: #999;
+        margin: 0.5rem 0 0;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        background: var(--gradient-1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state h3 {
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state p {
+        color: #666;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-chart-line"></i>Health Dashboard</h2>
+        <div class="chart-controls">
+            <button class="btn-chart active" onclick="updateTimeRange('day')">24H</button>
+            <button class="btn-chart" onclick="updateTimeRange('week')">7D</button>
+            <button class="btn-chart" onclick="updateTimeRange('month')">30D</button>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon heart">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <h3 class="stat-title">Heart Rate</h3>
+            </div>
+            <p class="stat-value">{{ latest_data.heart_rate }} BPM</p>
+            <p class="stat-change {% if latest_data.heart_rate > 100 %}negative{% else %}positive{% endif %}">
+                <i class="fas {% if latest_data.heart_rate > 100 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
+                {{ latest_data.heart_rate_change }}% from last reading
+            </p>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon oxygen">
+                    <i class="fas fa-lungs"></i>
+                </div>
+                <h3 class="stat-title">SpO2 Level</h3>
+            </div>
+            <p class="stat-value">{{ latest_data.spo2 }}%</p>
+            <p class="stat-change {% if latest_data.spo2 < 95 %}negative{% else %}positive{% endif %}">
+                <i class="fas {% if latest_data.spo2 < 95 %}fa-arrow-down{% else %}fa-arrow-up{% endif %}"></i>
+                {{ latest_data.spo2_change }}% from last reading
+            </p>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon temp">
+                    <i class="fas fa-thermometer-half"></i>
+                </div>
+                <h3 class="stat-title">Temperature</h3>
+            </div>
+            <p class="stat-value">{{ latest_data.temperature }}°C</p>
+            <p class="stat-change {% if latest_data.temperature > 37.5 %}negative{% else %}positive{% endif %}">
+                <i class="fas {% if latest_data.temperature > 37.5 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
+                {{ latest_data.temperature_change }}% from last reading
+            </p>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon bp">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <h3 class="stat-title">Blood Pressure</h3>
+            </div>
+            <p class="stat-value">{{ latest_data.systolic }}/{{ latest_data.diastolic }}</p>
+            <p class="stat-change {% if latest_data.systolic > 140 %}negative{% else %}positive{% endif %}">
+                <i class="fas {% if latest_data.systolic > 140 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
+                {{ latest_data.bp_change }}% from last reading
+            </p>
+        </div>
+    </div>
+
+    <!-- Health Trends Chart -->
+    <div class="chart-container">
+        <div class="chart-header">
+            <h3 class="chart-title">Health Trends</h3>
+            <div class="chart-controls">
+                <button class="btn-chart active" onclick="updateMetric('heart_rate')">Heart Rate</button>
+                <button class="btn-chart" onclick="updateMetric('spo2')">SpO2</button>
+                <button class="btn-chart" onclick="updateMetric('temperature')">Temperature</button>
+                <button class="btn-chart" onclick="updateMetric('blood_pressure')">Blood Pressure</button>
+            </div>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="healthChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Recent Alerts -->
+    <div class="chart-container">
+        <div class="chart-header">
+            <h3 class="chart-title">Recent Alerts</h3>
+        </div>
+        {% if alerts %}
+            {% for alert in alerts %}
+            <div class="alert-card">
+                <div class="alert-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="alert-content">
+                    <h4 class="alert-title">{{ alert.title }}</h4>
+                    <p class="alert-message">{{ alert.message }}</p>
+                    <p class="alert-time">{{ alert.timestamp }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-bell-slash"></i>
+                <h3>No Recent Alerts</h3>
+                <p>Your health metrics are within normal ranges.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let healthChart;
+    const ctx = document.getElementById('healthChart').getContext('2d');
+    
+    // Initialize chart
+    function initChart(data) {
+        if (healthChart) {
+            healthChart.destroy();
+        }
+        
+        healthChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: data.label,
+                    data: data.values,
+                    borderColor: '#6C63FF',
+                    backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Update time range
+    function updateTimeRange(range) {
+        document.querySelectorAll('.btn-chart').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Fetch new data based on time range
+        fetch(`/api/health-data?range=${range}`)
+            .then(response => response.json())
+            .then(data => {
+                initChart(data);
+            });
+    }
+    
+    // Update metric
+    function updateMetric(metric) {
+        document.querySelectorAll('.btn-chart').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        // Fetch new data for selected metric
+        fetch(`/api/health-data?metric=${metric}`)
+            .then(response => response.json())
+            .then(data => {
+                initChart(data);
+            });
+    }
+    
+    // Initialize with default data
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/api/health-data')
+            .then(response => response.json())
+            .then(data => {
+                initChart(data);
+            });
+    });
+</script>
+{% endblock %} 

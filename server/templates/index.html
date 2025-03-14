@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Health Monitoring System - Smart Healthcare Solution{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+                    url('https://source.unsplash.com/1600x900/?healthcare,medical');
+        background-size: cover;
+        background-position: center;
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-content {
+        position: relative;
+        z-index: 2;
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .hero-subtitle {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+    }
+    
+    .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+    
+    .btn-hero {
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+        background: var(--gradient-1);
+        color: white;
+        border: none;
+    }
+    
+    .btn-outline {
+        background: transparent;
+        color: white;
+        border: 2px solid white;
+    }
+    
+    .btn-hero:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    }
+    
+    .features-section {
+        padding: 5rem 0;
+        background: var(--light-color);
+    }
+    
+    .section-title {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    .section-title h2 {
+        font-size: 2.5rem;
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+    }
+    
+    .section-title p {
+        color: #666;
+        font-size: 1.2rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    
+    .feature-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    }
+    
+    .feature-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--gradient-1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        font-size: 2rem;
+        color: white;
+    }
+    
+    .feature-card h3 {
+        color: var(--dark-color);
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .feature-card p {
+        color: #666;
+        margin: 0;
+    }
+    
+    .how-it-works {
+        padding: 5rem 0;
+        background: white;
+    }
+    
+    .step-card {
+        text-align: center;
+        padding: 2rem;
+        position: relative;
+    }
+    
+    .step-number {
+        width: 40px;
+        height: 40px;
+        background: var(--gradient-1);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin: 0 auto 1rem;
+    }
+    
+    .step-card h3 {
+        color: var(--dark-color);
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .step-card p {
+        color: #666;
+        margin: 0;
+    }
+    
+    .cta-section {
+        background: var(--gradient-1);
+        color: white;
+        padding: 4rem 0;
+        text-align: center;
+    }
+    
+    .cta-content {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .cta-title {
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .cta-text {
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+    }
+    
+    .btn-cta {
+        background: white;
+        color: var(--primary-color);
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-cta:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">Smart Health Monitoring System</h1>
+        <p class="hero-subtitle">Real-time health tracking powered by IoT and blockchain technology</p>
+        <div class="hero-buttons">
+            <a href="{{ url_for('signup') }}" class="btn btn-hero btn-primary">Get Started</a>
+            <a href="#features" class="btn btn-hero btn-outline">Learn More</a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="features-section">
+    <div class="container">
+        <div class="section-title">
+            <h2>Key Features</h2>
+            <p>Comprehensive health monitoring solution with advanced features for better healthcare management</p>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                    <h3>Real-time Monitoring</h3>
+                    <p>Track vital signs including heart rate, SpO2, and temperature in real-time using IoT devices</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Secure Data Storage</h3>
+                    <p>Your health data is securely stored on the blockchain, ensuring privacy and data integrity</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3>Smart Alerts</h3>
+                    <p>Receive instant notifications when vital signs exceed normal ranges</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Health Analytics</h3>
+                    <p>Visualize your health data with interactive charts and trends</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-address-book"></i>
+                    </div>
+                    <h3>Emergency Contacts</h3>
+                    <p>Manage emergency contacts for quick access during health emergencies</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <h3>Healthcare Provider Access</h3>
+                    <p>Share your health data securely with healthcare providers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="how-it-works">
+    <div class="container">
+        <div class="section-title">
+            <h2>How It Works</h2>
+            <p>Simple and efficient process to monitor your health</p>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3>Connect Device</h3>
+                    <p>Connect your IoT health monitoring device to start tracking vital signs</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3>Data Collection</h3>
+                    <p>Real-time data collection and secure storage on the blockchain</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3>Monitor & Alert</h3>
+                    <p>Track your health metrics and receive alerts when needed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-content">
+            <h2 class="cta-title">Ready to Start Monitoring Your Health?</h2>
+            <p class="cta-text">Join thousands of users who are already benefiting from our smart health monitoring system</p>
+            <a href="{{ url_for('signup') }}" class="btn btn-cta">Create Account Now</a>
+        </div>
+    </div>
+</section>
+{% endblock %} 

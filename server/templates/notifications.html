@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - Health Monitoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notifications-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    
+    .notifications-header h2 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        font-size: 1.8rem;
+        color: var(--dark-color);
+    }
+    
+    .notifications-header h2 i {
+        background: var(--gradient-1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-right: 1rem;
+        font-size: 2rem;
+    }
+
+    .notification-filters {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+
+    .filter-btn {
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        border: none;
+        background: #f8f9fa;
+        color: var(--dark-color);
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .filter-btn:hover {
+        background: var(--gradient-1);
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .filter-btn.active {
+        background: var(--gradient-1);
+        color: white;
+    }
+
+    .notification-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+        position: relative;
+        overflow: hidden;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .notification-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .notification-card.unread {
+        border-left-color: var(--primary-color);
+        background: #f8f9fa;
+    }
+
+    .notification-card.unread::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: -4px;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 8px;
+        background: var(--primary-color);
+        border-radius: 50%;
+    }
+
+    .notification-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1.5rem;
+        font-size: 1.5rem;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .notification-icon.alert {
+        background: var(--gradient-2);
+    }
+
+    .notification-icon.info {
+        background: var(--gradient-1);
+    }
+
+    .notification-icon.warning {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+    }
+
+    .notification-content {
+        flex-grow: 1;
+    }
+
+    .notification-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .notification-message {
+        color: #666;
+        margin-bottom: 0.5rem;
+        line-height: 1.5;
+    }
+
+    .notification-time {
+        font-size: 0.9rem;
+        color: #999;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .notification-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .btn-mark-read {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border: none;
+        background: var(--gradient-1);
+        color: white;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-mark-read:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin-top: 2rem;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        background: var(--gradient-1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1.5rem;
+    }
+    
+    .empty-state h3 {
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+        font-size: 1.8rem;
+    }
+    
+    .empty-state p {
+        color: #666;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    .notification-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: var(--gradient-2);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .notification-count {
+        background: var(--gradient-2);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-left: 1rem;
+    }
+
+    .filter-count {
+        background: var(--gradient-1);
+        color: white;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        margin-left: 0.5rem;
+    }
+
+    .notification-card.hidden {
+        display: none;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="notifications-header">
+        <h2><i class="fas fa-bell"></i> Notifications</h2>
+        {% if unread_count > 0 %}
+        <span class="notification-count">
+            {{ unread_count }} Unread
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="notification-filters">
+        <button class="filter-btn active" data-filter="all">
+            <i class="fas fa-list"></i> All
+            <span class="filter-count">{{ notifications|length }}</span>
+        </button>
+        <button class="filter-btn" data-filter="unread">
+            <i class="fas fa-envelope"></i> Unread
+            <span class="filter-count">{{ unread_count }}</span>
+        </button>
+        <button class="filter-btn" data-filter="alerts">
+            <i class="fas fa-exclamation-circle"></i> Alerts
+            <span class="filter-count">{{ notifications|selectattr('type', 'equalto', 'alert')|list|length }}</span>
+        </button>
+    </div>
+
+    {% if notifications %}
+        {% for notification in notifications %}
+        <div class="notification-card {% if not notification.is_read %}unread{% endif %}" 
+             data-type="{{ notification.type }}"
+             data-read="{{ notification.is_read|lower }}">
+            <div class="d-flex align-items-start">
+                <div class="notification-icon {{ notification.type }}">
+                    {% if notification.type == 'alert' %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% elif notification.type == 'warning' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                    {% else %}
+                        <i class="fas fa-info-circle"></i>
+                    {% endif %}
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">
+                        {% if notification.type == 'alert' %}
+                            Health Alert
+                        {% elif notification.type == 'warning' %}
+                            Warning
+                        {% else %}
+                            Information
+                        {% endif %}
+                    </div>
+                    <div class="notification-message">{{ notification.message }}</div>
+                    <div class="notification-time">
+                        <i class="far fa-clock"></i>
+                        {{ notification.timestamp }}
+                    </div>
+                    {% if not notification.is_read %}
+                    <div class="notification-actions">
+                        <form action="{{ url_for('mark_notification_read', index=notification.index) }}" 
+                              method="POST" 
+                              class="d-inline mark-read-form">
+                            <button type="submit" class="btn-mark-read">
+                                <i class="fas fa-check"></i> Mark as Read
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-bell-slash"></i>
+            <h3>No Notifications</h3>
+            <p>You don't have any notifications at the moment.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const notificationCards = document.querySelectorAll('.notification-card');
+    const markReadForms = document.querySelectorAll('.mark-read-form');
+
+    // Handle filter buttons
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            this.classList.add('active');
+
+            const filter = this.getAttribute('data-filter');
+
+            notificationCards.forEach(card => {
+                if (filter === 'all') {
+                    card.classList.remove('hidden');
+                } else if (filter === 'unread') {
+                    card.classList.toggle('hidden', card.getAttribute('data-read') === 'true');
+                } else if (filter === 'alerts') {
+                    card.classList.toggle('hidden', card.getAttribute('data-type') !== 'alert');
+                }
+            });
+        });
+    });
+
+    // Handle mark as read forms
+    markReadForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const button = this.querySelector('button');
+            
+            // Disable button and show loading state
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Marking as Read...';
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const card = this.closest('.notification-card');
+                    card.classList.remove('unread');
+                    card.setAttribute('data-read', 'true');
+                    this.remove();
+                    
+                    // Update unread count
+                    const unreadCount = document.querySelector('.notification-count');
+                    if (unreadCount) {
+                        const currentCount = parseInt(unreadCount.textContent);
+                        if (currentCount > 1) {
+                            unreadCount.textContent = `${currentCount - 1} Unread`;
+                        } else {
+                            unreadCount.remove();
+                        }
+                    }
+                    
+                    // Update filter counts
+                    updateFilterCounts();
+                } else {
+                    throw new Error(data.message || 'Failed to mark as read');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-check"></i> Mark as Read';
+            });
+        });
+    });
+
+    function updateFilterCounts() {
+        const unreadCount = document.querySelectorAll('.notification-card[data-read="false"]').length;
+        const alertCount = document.querySelectorAll('.notification-card[data-type="alert"]').length;
+        const totalCount = document.querySelectorAll('.notification-card').length;
+
+        // Update filter counts
+        document.querySelector('[data-filter="all"] .filter-count').textContent = totalCount;
+        document.querySelector('[data-filter="unread"] .filter-count').textContent = unreadCount;
+        document.querySelector('[data-filter="alerts"] .filter-count').textContent = alertCount;
+    }
+});
+</script>
+{% endblock %} 

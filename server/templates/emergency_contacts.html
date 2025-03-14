@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}Emergency Contacts - Health Monitoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .contacts-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    
+    .contacts-header h2 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        font-size: 1.8rem;
+        color: var(--dark-color);
+    }
+    
+    .contacts-header h2 i {
+        background: var(--gradient-1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-right: 1rem;
+        font-size: 2rem;
+    }
+    
+    .contact-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.05);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .contact-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--gradient-1);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .contact-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    }
+    
+    .contact-card:hover::before {
+        opacity: 1;
+    }
+    
+    .contact-info {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+    }
+    
+    .contact-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1.5rem;
+        background: var(--gradient-1);
+        color: white;
+        font-size: 1.8rem;
+        box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .contact-card:hover .contact-icon {
+        transform: scale(1.1);
+    }
+    
+    .contact-details h3 {
+        margin: 0;
+        color: var(--dark-color);
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .contact-details p {
+        margin: 0.5rem 0;
+        color: #666;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .contact-details p i {
+        margin-right: 0.8rem;
+        color: var(--primary-color);
+        width: 20px;
+    }
+    
+    .contact-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .btn-action {
+        padding: 0.8rem 1.5rem;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+    
+    .btn-edit {
+        background: var(--gradient-1);
+        color: white;
+    }
+    
+    .btn-delete {
+        background: var(--gradient-2);
+        color: white;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    .btn-add-contact {
+        background: var(--gradient-1);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        font-size: 1.1rem;
+    }
+    
+    .btn-add-contact:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+    }
+    
+    .modal-content {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+    }
+    
+    .modal-header {
+        background: var(--gradient-1);
+        color: white;
+        border-radius: 20px 20px 0 0;
+        padding: 1.5rem;
+        border: none;
+    }
+    
+    .modal-header .btn-close {
+        color: white;
+        opacity: 1;
+    }
+    
+    .modal-body {
+        padding: 2rem;
+    }
+    
+    .form-label {
+        color: var(--dark-color);
+        font-weight: 500;
+        margin-bottom: 0.8rem;
+        font-size: 1.1rem;
+    }
+    
+    .form-control {
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+        border: 2px solid #eee;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(108, 99, 255, 0.15);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin-top: 2rem;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        background: var(--gradient-1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1.5rem;
+    }
+    
+    .empty-state h3 {
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+        font-size: 1.8rem;
+    }
+    
+    .empty-state p {
+        color: #666;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    .alert {
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 2rem;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+
+    .alert-danger {
+        background: #fff5f5;
+        color: #dc3545;
+    }
+
+    .alert-success {
+        background: #f0fff4;
+        color: #28a745;
+    }
+
+    .alert-info {
+        background: #f0f9ff;
+        color: #17a2b8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="contacts-header">
+        <h2><i class="fas fa-address-book"></i> Emergency Contacts</h2>
+        <button type="button" class="btn-add-contact" data-bs-toggle="modal" data-bs-target="#addContactModal">
+            <i class="fas fa-plus"></i> Add Emergency Contact
+        </button>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        {{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        {{ success }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        {% if contacts %}
+            {% for contact in contacts %}
+            <div class="col-md-6 mb-4">
+                <div class="contact-card">
+                    <div class="contact-info">
+                        <div class="contact-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="contact-details">
+                            <h3>{{ contact.name }}</h3>
+                            <p><i class="fas fa-phone"></i> {{ contact.phone }}</p>
+                            <p><i class="fas fa-envelope"></i> {{ contact.email }}</p>
+                        </div>
+                    </div>
+                    <div class="contact-actions">
+                        <button type="button" class="btn-action btn-edit" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#editContactModal{{ loop.index0 }}"
+                                data-contact='{{ contact|tojson }}'>
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <form action="{{ url_for('delete_emergency_contact', index=loop.index0) }}" 
+                              method="POST" 
+                              class="d-inline"
+                              onsubmit="return confirm('Are you sure you want to delete this contact?');">
+                            <button type="submit" class="btn-action btn-delete">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Contact Modal -->
+            <div class="modal fade" id="editContactModal{{ loop.index0 }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Emergency Contact</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form action="{{ url_for('edit_emergency_contact', index=loop.index0) }}" method="POST">
+                            <div class="modal-body">
+                                <div class="mb-4">
+                                    <label for="editName{{ loop.index0 }}" class="form-label">Name</label>
+                                    <input type="text" class="form-control" id="editName{{ loop.index0 }}" 
+                                           name="name" value="{{ contact.name }}" required>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="editPhone{{ loop.index0 }}" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="editPhone{{ loop.index0 }}" 
+                                           name="phone" value="{{ contact.phone }}" required>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="editEmail{{ loop.index0 }}" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="editEmail{{ loop.index0 }}" 
+                                           name="email" value="{{ contact.email }}" required>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="empty-state">
+                    <i class="fas fa-address-book"></i>
+                    <h3>No Emergency Contacts</h3>
+                    <p>Add your emergency contacts to ensure quick access in case of medical emergencies.</p>
+                    <button type="button" class="btn-add-contact" data-bs-toggle="modal" data-bs-target="#addContactModal">
+                        <i class="fas fa-plus"></i> Add Your First Contact
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Contact Modal -->
+<div class="modal fade" id="addContactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Emergency Contact</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('add_emergency_contact') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="phone" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Contact</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle edit contact modals
+    const editModals = document.querySelectorAll('[id^="editContactModal"]');
+    editModals.forEach(modal => {
+        modal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const contactData = JSON.parse(button.getAttribute('data-contact'));
+            const modalId = this.id;
+            const index = modalId.replace('editContactModal', '');
+            
+            document.getElementById(`editName${index}`).value = contactData.name;
+            document.getElementById(`editPhone${index}`).value = contactData.phone;
+            document.getElementById(`editEmail${index}`).value = contactData.email;
+        });
+    });
+});
+</script>
+{% endblock %} 

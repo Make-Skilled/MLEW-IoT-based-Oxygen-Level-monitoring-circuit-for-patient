@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Health Monitoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-header h2 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .profile-header h2 i {
+        background: var(--gradient-1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-right: 0.8rem;
+    }
+    
+    .profile-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .profile-info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: var(--gradient-1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 2rem;
+        font-size: 3rem;
+        color: white;
+        box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+    }
+    
+    .profile-details h3 {
+        margin: 0;
+        color: var(--dark-color);
+        font-size: 1.8rem;
+    }
+    
+    .profile-details p {
+        margin: 0.5rem 0 0;
+        color: #666;
+    }
+    
+    .profile-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #fff5f5, #fff0f0);
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .stat-card i {
+        font-size: 2rem;
+        color: var(--accent-color);
+        margin-bottom: 1rem;
+    }
+    
+    .stat-card h4 {
+        margin: 0;
+        color: var(--dark-color);
+        font-size: 1.2rem;
+    }
+    
+    .stat-card p {
+        margin: 0.5rem 0 0;
+        color: #666;
+        font-size: 1.1rem;
+    }
+    
+    .settings-section {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .settings-section h3 {
+        color: var(--dark-color);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .settings-section h3 i {
+        background: var(--gradient-1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-right: 0.8rem;
+    }
+    
+    .form-label {
+        color: var(--dark-color);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+        padding: 0.8rem 1rem;
+        border: 1px solid #ddd;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(108, 99, 255, 0.25);
+    }
+    
+    .btn-save {
+        background: var(--gradient-1);
+        color: white;
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+    }
+    
+    .alert {
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="profile-header">
+        <h2><i class="fas fa-user"></i>Profile Settings</h2>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger">
+        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle me-2"></i>{{ success }}
+    </div>
+    {% endif %}
+
+    <div class="profile-card">
+        <div class="profile-info">
+            <div class="profile-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="profile-details">
+                <h3>{{ user.name }}</h3>
+                <p><i class="fas fa-envelope me-2"></i>{{ user.email }}</p>
+                <p><i class="fas fa-wallet me-2"></i>{{ user.wallet_address }}</p>
+            </div>
+        </div>
+
+        <div class="profile-stats">
+            <div class="stat-card">
+                <i class="fas fa-heartbeat"></i>
+                <h4>Health Records</h4>
+                <p>{{ user.health_records_count }}</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-bell"></i>
+                <h4>Notifications</h4>
+                <p>{{ user.notifications_count }}</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-address-book"></i>
+                <h4>Emergency Contacts</h4>
+                <p>{{ user.emergency_contacts_count }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h3><i class="fas fa-cog"></i>Account Settings</h3>
+        <form method="POST" action="{{ url_for('update_profile') }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ user.name }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="password" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="password" name="password">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="confirm_password" class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-save">
+                <i class="fas fa-save me-2"></i>Save Changes
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - Health Monitoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .signup-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 2rem 0;
+    }
+    
+    .signup-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+        overflow: hidden;
+        max-width: 500px;
+        width: 100%;
+        margin: 0 auto;
+    }
+    
+    .signup-header {
+        background: var(--gradient-1);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .signup-header h1 {
+        font-size: 2rem;
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .signup-header p {
+        margin: 0.5rem 0 0;
+        opacity: 0.9;
+    }
+    
+    .signup-body {
+        padding: 2rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        color: var(--dark-color);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(108, 99, 255, 0.25);
+        outline: none;
+    }
+    
+    .form-text {
+        font-size: 0.875rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+    
+    .btn-signup {
+        width: 100%;
+        padding: 1rem;
+        background: var(--gradient-1);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-signup:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+    }
+    
+    .signup-footer {
+        text-align: center;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-top: 1px solid #eee;
+    }
+    
+    .signup-footer p {
+        margin: 0;
+        color: #666;
+    }
+    
+    .signup-footer a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .signup-footer a:hover {
+        text-decoration: underline;
+    }
+    
+    .alert {
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .alert i {
+        margin-right: 0.5rem;
+    }
+    
+    .wallet-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .wallet-info h4 {
+        color: var(--dark-color);
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .wallet-info h4 i {
+        margin-right: 0.5rem;
+        color: var(--primary-color);
+    }
+    
+    .wallet-info p {
+        color: #666;
+        font-size: 0.875rem;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="signup-container">
+    <div class="signup-card">
+        <div class="signup-header">
+            <h1>Sign Up</h1>
+            <p>Create your account</p>
+        </div>
+        <div id="error-message" class="alert alert-danger" style="display: {% if error %}block{% else %}none{% endif %};">
+            {{ error }}
+        </div>
+        
+        <form id="signupForm" class="signup-body" method="POST" action="{{ url_for('signup') }}">
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="wallet_address">Wallet Address</label>
+                <input type="text" id="wallet_address" name="wallet_address" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+            </div>
+            
+            <button type="submit" class="btn btn-signup">Sign Up</button>
+        </form>
+        
+        <div class="signup-footer">
+            <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %} 
