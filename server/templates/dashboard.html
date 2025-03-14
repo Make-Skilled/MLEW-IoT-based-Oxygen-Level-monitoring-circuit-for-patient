@@ -246,62 +246,54 @@
         </div>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="stats-grid">
+    <!-- Health Stats Section -->
+    <div class="stats-container">
         <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon heart">
-                    <i class="fas fa-heartbeat"></i>
-                </div>
-                <h3 class="stat-title">Heart Rate</h3>
+            <div class="stat-icon">
+                <i class="fas fa-heartbeat"></i>
             </div>
-            <p class="stat-value">{{ latest_data.heart_rate }} BPM</p>
-            <p class="stat-change {% if latest_data.heart_rate > 100 %}negative{% else %}positive{% endif %}">
-                <i class="fas {% if latest_data.heart_rate > 100 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
-                {{ latest_data.heart_rate_change }}% from last reading
-            </p>
+            <div class="stat-info">
+                <h3>Heart Rate</h3>
+                <p class="stat-value">
+                    {% if latest_data.heart_rate is not none %}
+                        {{ latest_data.heart_rate }} BPM
+                    {% else %}
+                        -- BPM
+                    {% endif %}
+                </p>
+            </div>
         </div>
-
+        
         <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon oxygen">
-                    <i class="fas fa-lungs"></i>
-                </div>
-                <h3 class="stat-title">SpO2 Level</h3>
+            <div class="stat-icon">
+                <i class="fas fa-lungs"></i>
             </div>
-            <p class="stat-value">{{ latest_data.spo2 }}%</p>
-            <p class="stat-change {% if latest_data.spo2 < 95 %}negative{% else %}positive{% endif %}">
-                <i class="fas {% if latest_data.spo2 < 95 %}fa-arrow-down{% else %}fa-arrow-up{% endif %}"></i>
-                {{ latest_data.spo2_change }}% from last reading
-            </p>
+            <div class="stat-info">
+                <h3>SpO2</h3>
+                <p class="stat-value">
+                    {% if latest_data.spo2 is not none %}
+                        {{ latest_data.spo2 }}%
+                    {% else %}
+                        --%
+                    {% endif %}
+                </p>
+            </div>
         </div>
-
+        
         <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon temp">
-                    <i class="fas fa-thermometer-half"></i>
-                </div>
-                <h3 class="stat-title">Temperature</h3>
+            <div class="stat-icon">
+                <i class="fas fa-thermometer-half"></i>
             </div>
-            <p class="stat-value">{{ latest_data.temperature }}°C</p>
-            <p class="stat-change {% if latest_data.temperature > 37.5 %}negative{% else %}positive{% endif %}">
-                <i class="fas {% if latest_data.temperature > 37.5 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
-                {{ latest_data.temperature_change }}% from last reading
-            </p>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon bp">
-                    <i class="fas fa-tachometer-alt"></i>
-                </div>
-                <h3 class="stat-title">Blood Pressure</h3>
+            <div class="stat-info">
+                <h3>Temperature</h3>
+                <p class="stat-value">
+                    {% if latest_data.temperature is not none %}
+                        {{ latest_data.temperature }}°C
+                    {% else %}
+                        --°C
+                    {% endif %}
+                </p>
             </div>
-            <p class="stat-value">{{ latest_data.systolic }}/{{ latest_data.diastolic }}</p>
-            <p class="stat-change {% if latest_data.systolic > 140 %}negative{% else %}positive{% endif %}">
-                <i class="fas {% if latest_data.systolic > 140 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
-                {{ latest_data.bp_change }}% from last reading
-            </p>
         </div>
     </div>
 

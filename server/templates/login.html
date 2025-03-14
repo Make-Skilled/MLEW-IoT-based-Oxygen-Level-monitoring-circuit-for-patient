@@ -188,27 +188,19 @@
         </div>
         
         <div class="login-body">
-            {% if error %}
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-circle"></i>
-                {{ error }}
-            </div>
-            {% endif %}
-            
             <form method="POST" action="{{ url_for('login') }}">
                 <div class="form-group">
-                    <label for="email" class="form-label">Email Address</label>
+                    <label for="email">Email</label>
                     <input type="email" class="form-control" id="email" name="email" required>
                 </div>
-                
                 <div class="form-group">
-                    <label for="password" class="form-label">Password</label>
+                    <label for="password">Password</label>
                     <input type="password" class="form-control" id="password" name="password" required>
                 </div>
-                
-                <button type="submit" class="btn btn-login">
-                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
-                </button>
+                <button type="submit" class="btn btn-primary">Login</button>
+                {% if error %}
+                <div class="alert alert-danger mt-3">{{ error }}</div>
+                {% endif %}
             </form>
         </div>
         

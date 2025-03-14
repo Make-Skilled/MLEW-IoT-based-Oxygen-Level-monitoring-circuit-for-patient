@@ -27,28 +27,34 @@ USER_MANAGEMENT_ARTIFACT_PATH = "../build/contracts/UserManagement.json"
 NOTIFICATION_SYSTEM_ARTIFACT_PATH = "../build/contracts/NotificationSystem.json"
 
 def connect_with_contract(wallet_address=None, artifact=USER_MANAGEMENT_ARTIFACT_PATH):
-    # Connect to blockchain server
-    web3 = Web3(HTTPProvider(BLOCKCHAIN_SERVER))
-    web3.middleware_onion.inject(geth_poa_middleware, layer=0)
-    print('Connected with Blockchain Server')
+    try:
+        # Connect to blockchain server
+        web3 = Web3(HTTPProvider(BLOCKCHAIN_SERVER))
+        web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+        print(f'Connected with Blockchain Server: {BLOCKCHAIN_SERVER}')
 
-    # Set default account based on wallet address
-    if wallet_address and web3.isAddress(wallet_address):
-        web3.eth.default_account = wallet_address
-    else:
-        web3.eth.default_account = web3.eth.accounts[0]
-    print('Wallet Selected:', web3.eth.default_account)
+        # Set default account based on wallet address
+        if wallet_address and web3.isAddress(wallet_address):
+            web3.eth.default_account = wallet_address
+        else:
+            web3.eth.default_account = web3.eth.accounts[0]
+        print(f'Using wallet address: {web3.eth.default_account}')
 
-    # Load contract artifact
-    with open(artifact) as f:
-        artifact_json = json.load(f)
-        contract_abi = artifact_json['abi']
-        contract_address = artifact_json['networks']['5777']['address']
-    
-    # Create contract instance
-    contract = web3.eth.contract(abi=contract_abi, address=contract_address)
-    print('Contract Selected:', contract_address)
-    return contract, web3
+        # Load contract artifact
+        with open(artifact) as f:
+            artifact_json = json.load(f)
+            contract_abi = artifact_json['abi']
+            contract_address = artifact_json['networks']['5777']['address']
+            print(f'Loading contract from: {artifact}')
+            print(f'Contract address: {contract_address}')
+
+        # Create contract instance
+        contract = web3.eth.contract(abi=contract_abi, address=contract_address)
+        return contract, web3
+
+    except Exception as e:
+        print(f"Error in connect_with_contract: {str(e)}")
+        raise
 
 # Initialize contract connections with default account (0)
 try:
@@ -75,132 +81,162 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        if not all([email, password]):
-            return render_template('login.html', error='All fields are required')
-        
         try:
-            # Hash the password
-            password_hash = user_web3.keccak(text=password).hex()
+            email = request.form.get('email')
+            password = request.form.get('password')
             
-            # Verify password on blockchain
-            if user_contract.functions.verifyPassword(email, password_hash).call():
-                # Get user's wallet address and name
-                wallet_address = user_contract.functions.getUserWallet(email).call()
-                name, _, _ = user_contract.functions.getUser(email).call()
+            if not all([email, password]):
+                return render_template('login.html', error='All fields are required')
+            
+            try:
+                # Check if user exists
+                user_exists = user_contract.functions.checkUser(email).call()
+                if not user_exists:
+                    return render_template('login.html', error='User not found')
                 
-                # Set session variables
-                session['user_id'] = email
-                session['wallet_address'] = wallet_address
-                session['user_name'] = name
-                session.permanent = True  # Make session last longer
+                # Hash the password - Make sure to use the same method as signup
+                password_hash = Web3.keccak(text=password).hex()
+                # Add '0x' prefix if not present
+                if not password_hash.startswith('0x'):
+                    password_hash = '0x' + password_hash
                 
-                return redirect(url_for('dashboard'))
-            else:
-                return render_template('login.html', error='Invalid credentials')
+                # Get stored password hash
+                stored_password = user_contract.functions.getUserPassword(email).call()
+                
+                # Debug prints
+                print(f"Input password hash: {password_hash}")
+                print(f"Stored password hash: {stored_password}")
+                
+                # Verify password using the contract's function
+                is_valid = user_contract.functions.verifyPassword(email, Web3.toBytes(hexstr=password_hash)).call()
+                
+                if is_valid:
+                    # Get additional user data
+                    wallet_address = user_contract.functions.getUserWallet(email).call()
+                    name = user_contract.functions.getUserName(email).call()
+                    
+                    # Set session data
+                    session['user_id'] = email
+                    session['wallet_address'] = wallet_address
+                    session['user_name'] = name
+                    return redirect(url_for('dashboard'))
+                else:
+                    return render_template('login.html', error='Invalid password')
+                    
+            except Exception as contract_error:
+                print(f"Contract interaction error: {str(contract_error)}")
+                return render_template('login.html', error='Login failed. Please try again.')
                 
         except Exception as e:
             print(f"Login error: {str(e)}")
-            return render_template('login.html', error='Login failed. Please try again.')
+            return render_template('login.html', error='Login failed')
     
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        wallet_address = request.form.get('wallet_address')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
-        
-        # Validate input fields
-        if not all([name, email, wallet_address, password, confirm_password]):
-            return render_template('signup.html', error='All fields are required')
-            
-        if password != confirm_password:
-            return render_template('signup.html', error='Passwords do not match')
-        
         try:
-            # # Hash the password using bcrypt
-            # password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            name = request.form.get('name')
+            email = request.form.get('email')
+            wallet_address = request.form.get('wallet_address')
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
             
-            # Convert the password hash to bytes32
-            password_hash_bytes32 = Web3.toHex(Web3.keccak(text=password)).rjust(66, '0')  # Ensure it is 32 bytes
+            if not all([name, email, wallet_address, password, confirm_password]):
+                return render_template('signup.html', error='All fields are required')
+                
+            if password != confirm_password:
+                return render_template('signup.html', error='Passwords do not match')
             
+            if not Web3.isAddress(wallet_address):
+                return render_template('signup.html', error='Invalid wallet address')
+
             # Create contract instance with user's wallet
             user_contract_instance, web3 = connect_with_contract(wallet_address)
             
-            # Register user on blockchain
-            tx = user_contract_instance.functions.registerUser(
-                email, 
-                name, 
-                password_hash_bytes32,  # Use the bytes32 password hash
-                wallet_address
-            ).buildTransaction({
-                'from': wallet_address,
-                'nonce': web3.eth.get_transaction_count(wallet_address),
-                'gas': 2000000,
-                'gasPrice': web3.eth.gas_price
-            })
+            # Hash the password
+            password_hash = Web3.keccak(text=password).hex()
+            # Add '0x' prefix if not present
+            if not password_hash.startswith('0x'):
+                password_hash = '0x' + password_hash
             
-            # Send the transaction
-            tx_hash = web3.eth.send_raw_transaction(web3.eth.account.sign_transaction(tx, private_key).rawTransaction)
-            
-            # Return the transaction data to the frontend for signing
-            return jsonify({
-                'status': 'success',
-                'transaction': {
-                    'to': tx['to'],
-                    'from': tx['from'],
-                    'data': tx['data'],
-                    'gas': tx['gas'],
-                    'gasPrice': tx['gasPrice'],
-                    'nonce': tx['nonce'],
-                    'chainId': web3.eth.chain_id
-                }
-            })
-            
+            try:
+                # Register user directly
+                tx = user_contract_instance.functions.registerUser(
+                    email,
+                    name,
+                    Web3.toBytes(hexstr=password_hash),
+                    wallet_address
+                ).transact({
+                    'from': wallet_address,
+                    'gas': 3000000,
+                    'gasPrice': web3.eth.gas_price
+                })
+                
+                # Wait for transaction receipt
+                receipt = web3.eth.wait_for_transaction_receipt(tx)
+                
+                if receipt.status == 1:
+                    # Set session data
+                    session['user_id'] = email
+                    session['wallet_address'] = wallet_address
+                    session['user_name'] = name
+                    
+                    return redirect(url_for('dashboard'))
+                else:
+                    return render_template('signup.html', error='Transaction failed')
+                    
+            except Exception as contract_error:
+                print(f"Contract interaction error: {str(contract_error)}")
+                return render_template('signup.html', error='Registration failed. Please try again.')
+                
         except Exception as e:
             print(f"Signup error: {str(e)}")
-            return render_template('signup.html', error=f'Registration failed: {str(e)}')
+            return render_template('signup.html', error='Registration failed')
     
     return render_template('signup.html')
 
 @app.route('/signup/complete', methods=['POST'])
 def complete_signup():
     try:
-        # Get the signed transaction from the frontend
-        signed_tx = request.json.get('signedTransaction')
-        user_data = request.json.get('userData')
+        data = request.get_json()
+        signed_tx = data.get('signedTransaction')
+        user_data = data.get('userData')
         
         if not signed_tx or not user_data:
-            return jsonify({'status': 'error', 'message': 'Missing data'}), 400
-            
-        # Send the signed transaction
+            return jsonify({'status': 'error', 'message': 'Missing transaction data'}), 400
+        
         web3 = Web3(HTTPProvider(BLOCKCHAIN_SERVER))
-        tx_hash = web3.eth.send_raw_transaction(signed_tx)
+        web3.middleware_onion.inject(geth_poa_middleware, layer=0)  # Add this line for POA networks
         
-        # Wait for transaction receipt
-        receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
-        
-        if receipt['status'] == 1:  # Transaction successful
-            # Set session variables
-            session['user_id'] = user_data['email']
-            session['wallet_address'] = user_data['wallet_address']
-            session['user_name'] = user_data['name']
-            session.permanent = True
+        try:
+            # Send transaction
+            tx_hash = web3.eth.send_raw_transaction(signed_tx)
             
-            return jsonify({
-                'status': 'success',
-                'redirect': url_for('dashboard')
-            })
-        else:
+            # Wait for transaction confirmation with timeout
+            receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)  # 2 minutes timeout
+            
+            if receipt.status == 1:  # Transaction successful
+                session['user_id'] = user_data['email']
+                session['wallet_address'] = user_data['wallet_address']
+                session['user_name'] = user_data['name']
+                
+                return jsonify({
+                    'status': 'success',
+                    'redirect': url_for('dashboard')
+                })
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Transaction failed'
+                }), 500
+                
+        except Exception as tx_error:
+            print(f"Transaction error: {str(tx_error)}")
             return jsonify({
                 'status': 'error',
-                'message': 'Transaction failed'
+                'message': 'Failed to process blockchain transaction'
             }), 500
             
     except Exception as e:
@@ -214,59 +250,60 @@ def complete_signup():
 @login_required
 def dashboard():
     try:
-        # Ensure you are unpacking the return values correctly
-        health_record_contract, health_web3 = connect_with_contract(session['wallet_address'], HEALTH_RECORD_ARTIFACT_PATH)
+        wallet_address = session['wallet_address']
+        health_record_contract, health_web3 = connect_with_contract(wallet_address, HEALTH_RECORD_ARTIFACT_PATH)
         
-        # Get the latest health data from the blockchain
-        latest_data = health_record_contract.functions.getLatestHealthData(session['wallet_address']).call()
+        # Get latest health data
+        try:
+            latest_data = health_record_contract.functions.getLatestData("ESP32_001").call()
+            formatted_data = {
+                "temperature": latest_data[1] / 100,  # Convert back from integer
+                "heart_rate": latest_data[2],
+                "spo2": latest_data[3],
+                "timestamp": latest_data[0]
+            }
+        except Exception as data_error:
+            print(f"Error getting health data: {str(data_error)}")
+            formatted_data = {
+                "temperature": None,
+                "heart_rate": None,
+                "spo2": None,
+                "timestamp": None
+            }
         
-        # Get alerts from the notification system
-        notification_contract, notification_web3 = connect_with_contract(session['wallet_address'], NOTIFICATION_SYSTEM_ARTIFACT_PATH)
-        alerts = notification_contract.functions.getUserAlerts(session['wallet_address']).call()
-        
-        # Process the latest data
-        processed_data = {
-            'heart_rate': latest_data[0],
-            'spo2': latest_data[1],
-            'temperature': latest_data[2],
-            'systolic': latest_data[3],
-            'diastolic': latest_data[4],
-            'heart_rate_change': calculate_change(latest_data[0], 75),  # Assuming normal heart rate is 75
-            'spo2_change': calculate_change(latest_data[1], 98),  # Assuming normal SpO2 is 98
-            'temperature_change': calculate_change(latest_data[2], 37),  # Assuming normal temperature is 37
-            'bp_change': calculate_change(latest_data[3], 120)  # Assuming normal systolic is 120
-        }
-        
-        # Process alerts
-        processed_alerts = []
-        for alert in alerts:
-            processed_alerts.append({
-                'title': 'Health Alert',
-                'message': alert[1],  # Alert message
-                'timestamp': datetime.fromtimestamp(alert[2]).strftime('%Y-%m-%d %H:%M:%S')  # Convert timestamp to readable format
-            })
+        # Get notifications/alerts
+        try:
+            notification_contract, notification_web3 = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
+            messages, timestamps, read_status, types = notification_contract.functions.getNotifications(session['user_id']).call()
+            alerts = []
+            for i in range(len(messages)):
+                alerts.append({
+                    'message': messages[i],
+                    'timestamp': datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d %H:%M:%S'),
+                    'type': types[i]
+                })
+        except Exception as alert_error:
+            print(f"Error getting alerts: {str(alert_error)}")
+            alerts = []
         
         return render_template('dashboard.html', 
-                             latest_data=processed_data,
-                             alerts=processed_alerts)
+                             latest_data=formatted_data,
+                             alerts=alerts,
+                             user_name=session.get('user_name'))
                              
     except Exception as e:
         print(f"Error in dashboard: {str(e)}")
-        # Return default values if there's an error
-        default_data = {
-            'heart_rate': 0,
-            'spo2': 0,
-            'temperature': 0,
-            'systolic': 0,
-            'diastolic': 0,
-            'heart_rate_change': 0,
-            'spo2_change': 0,
-            'temperature_change': 0,
-            'bp_change': 0
-        }
+        # Provide default values when there's an error
         return render_template('dashboard.html', 
-                             latest_data=default_data,
-                             alerts=[])
+                             error=str(e),
+                             latest_data={
+                                 "temperature": None,
+                                 "heart_rate": None,
+                                 "spo2": None,
+                                 "timestamp": None
+                             },
+                             alerts=[],
+                             user_name=session.get('user_name'))
 
 def calculate_change(current, normal):
     """Calculate percentage change from normal value"""
@@ -571,70 +608,33 @@ def add_emergency_contact():
 #     return jsonify({'status': 'success'})
 
 @app.route('/api/health-data', methods=['GET'])
-def receive_health_data():
+def get_health_data():
     try:
-        # Step 1: Initialize contracts properly
-        health_contract, health_web3 = connect_with_contract(session.get('wallet_address', 0), HEALTH_RECORD_ARTIFACT_PATH)
+        device_id = request.args.get('device_id', 'ESP32_001')
         
-        # Step 2: Fetch data from ThingSpeak
-        thing_speak_url = "https://api.thingspeak.com/channels/2839570/status.json"
-        response = requests.get(thing_speak_url)
-        thing_speak_data = response.json()
-
-        # Extract the latest data
-        temperature = float(thing_speak_data['feeds'][-1]['field1'])
-        heart_rate = int(thing_speak_data['feeds'][-1]['field2'])
-        spo2 = int(thing_speak_data['feeds'][-1]['field3'])
-        systolic = int(thing_speak_data['feeds'][-1]['field4'])
-        diastolic = int(thing_speak_data['feeds'][-1]['field5'])
+        # Update function name based on your contract
+        data = health_contract.functions.getDeviceData(device_id).call()
         
-        # Get device_id and user_email from query params
-        device_id = request.args.get('device_id', 'ESP32_001')  # Default device ID
-        user_email = request.args.get('user_email', session.get('user_id', ''))  # Get from session if not in params
-
-        # Convert temperature to integer (*100) for blockchain storage
-        temp_int = int(temperature * 100)
-
-        # Send transaction to blockchain
-        tx = health_contract.functions.recordHealthData(
-            device_id,
-            temp_int,
-            heart_rate,
-            spo2
-        ).buildTransaction({
-            'from': health_web3.eth.default_account,
-            'nonce': health_web3.eth.get_transaction_count(health_web3.eth.default_account),
-            'gas': 2000000,
-            'gasPrice': health_web3.eth.gas_price
-        })
-        
-        # Sign and send transaction
-        signed_tx = health_web3.eth.account.sign_transaction(tx, BLOCKCHAIN_PRIVATE_KEY)
-        tx_hash = health_web3.eth.send_raw_transaction(signed_tx.rawTransaction)
-
-        # Check for health alerts
-        check_health_alerts(user_email, {
-            'heart_rate': heart_rate,
-            'spo2': spo2,
-            'temperature': temperature,
-            'systolic': systolic,
-            'diastolic': diastolic
-        })
-
+        # Add null checks and proper indexing
+        if not data or len(data) < 5:
+            return jsonify({
+                "status": "error",
+                "message": "No data available"
+            }), 404
+            
         return jsonify({
             "status": "success",
-            "transaction_hash": health_web3.to_hex(tx_hash),
             "data": {
-                "temperature": temperature,
-                "heart_rate": heart_rate,
-                "spo2": spo2,
-                "systolic": systolic,
-                "diastolic": diastolic
+                "temperature": data[0] / 100 if data[0] is not None else None,
+                "heart_rate": data[1] if data[1] is not None else None,
+                "spo2": data[2] if data[2] is not None else None,
+                "systolic": data[3] if data[3] is not None else None,
+                "diastolic": data[4] if data[4] is not None else None
             }
         })
 
     except Exception as e:
-        print(f"Error in health data endpoint: {str(e)}")  # Log the error
+        print(f"Error in health data endpoint: {str(e)}")
         return jsonify({
             "status": "error",
             "message": str(e)
@@ -754,10 +754,16 @@ def check_health_alerts(user_email, health_data):
 @login_required
 def get_notification_count():
     try:
-        user_email = session['user_id']
+        user_email = session.get('user_id')
+        if not user_email:
+            return jsonify({'count': 0})
+            
         messages, timestamps, read_status, types = notification_contract.functions.getNotifications(user_email).call()
         
-        # Count unread notifications
+        # Add null check for read_status
+        if not read_status:
+            return jsonify({'count': 0})
+            
         unread_count = sum(1 for status in read_status if not status)
         
         return jsonify({
@@ -841,6 +847,20 @@ def delete_emergency_contact(index):
     except Exception as e:
         print(f"Delete emergency contact error: {str(e)}")
         return render_template('emergency_contacts.html', error=f'Error deleting contact: {str(e)}')
+
+@app.route('/debug/check-user/<email>')
+def debug_check_user(email):
+    try:
+        user_data = user_contract.functions.getUserData(email).call()
+        return jsonify({
+            'exists': user_data[4],
+            'name': user_data[0],
+            'wallet': user_contract.functions.getUserWallet(email).call()
+        })
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

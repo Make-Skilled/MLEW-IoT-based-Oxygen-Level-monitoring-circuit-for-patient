@@ -136,4 +136,18 @@ contract UserManagement {
         require(users[_email].exists, "User does not exist");
         return users[_email].passwordHash == _passwordHash;
     }
-} 
+
+    function checkUser(string memory _email) public view returns (bool) {
+        return users[_email].exists;
+    }
+
+    function getUserPassword(string memory _email) public view returns (bytes32) {
+        require(users[_email].exists, "User does not exist");
+        return users[_email].passwordHash;
+    }
+
+    function getUserName(string memory _email) public view returns (string memory) {
+        require(users[_email].exists, "User does not exist");
+        return users[_email].name;
+    }
+}

@@ -78,9 +78,15 @@ contract HealthRecord {
     function getLatestData(string memory deviceId) 
         public 
         view 
-        returns (HealthData memory) 
+        returns (uint256, uint256, uint256, uint256) 
     {
         require(deviceRecords[deviceId].length > 0, "No data found");
-        return deviceRecords[deviceId][deviceRecords[deviceId].length - 1];
+        HealthData memory latest = deviceRecords[deviceId][deviceRecords[deviceId].length - 1];
+        return (
+            latest.timestamp,
+            latest.temperature,
+            latest.heartRate,
+            latest.spo2
+        );
     }
 } 
