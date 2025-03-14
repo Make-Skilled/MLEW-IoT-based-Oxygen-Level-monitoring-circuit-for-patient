@@ -3,161 +3,95 @@ pragma solidity ^0.8.0;
 
 contract NotificationSystem {
     struct Notification {
+        address wallet;
         string message;
-        uint256 timestamp;
-        bool isRead;
-        string notificationType;  // "alert", "info", "warning"
+        string timestamp;
+        string abnormalParameter;
+        string parameterValue;
+        string warningLevel;  // "LOW", "MEDIUM", "HIGH"
     }
 
-    struct EmergencyContact {
-        string name;
-        string phone;
-        string email;
-        bool exists;
-    }
-
-    mapping(string => Notification[]) public userNotifications;
-    mapping(string => EmergencyContact[]) public userContacts;
-    mapping(string => bool) public userSubscriptions;
-    address public owner;
-
-    event NotificationCreated(string email, string message, string notificationType);
-    event ContactAdded(string email, string contactName);
-    event ContactUpdated(string email, string contactName);
-    event ContactDeleted(string email, string contactName);
-    event SubscriptionUpdated(string email, bool status);
-
-    constructor() {
-        owner = msg.sender;
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function");
-        _;
-    }
+    // Mapping from wallet address to array of notifications
+    mapping(address => Notification[]) private userNotifications;
+    
+    // Mapping to track total notifications for each wallet
+    mapping(address => uint256) private totalNotifications;
 
     function addNotification(
-        string memory _email,
+        address _wallet,
         string memory _message,
-        string memory _type
+        string memory _timestamp,
+        string memory _abnormalParameter,
+        string memory _parameterValue,
+        string memory _warningLevel
     ) public {
+        // Create new notification
         Notification memory newNotification = Notification({
+            wallet: _wallet,
             message: _message,
-            timestamp: block.timestamp,
-            isRead: false,
-            notificationType: _type
+            timestamp: _timestamp,
+            abnormalParameter: _abnormalParameter,
+            parameterValue: _parameterValue,
+            warningLevel: _warningLevel
         });
 
-        userNotifications[_email].push(newNotification);
-        emit NotificationCreated(_email, _message, _type);
+        // Add notification to user's notifications array
+        userNotifications[_wallet].push(newNotification);
+        
+        // Update counter
+        totalNotifications[_wallet]++;
     }
 
-    function addEmergencyContact(
-        string memory _email,
-        string memory _name,
-        string memory _phone,
-        string memory _contactEmail
-    ) public {
-        EmergencyContact memory newContact = EmergencyContact({
-            name: _name,
-            phone: _phone,
-            email: _contactEmail,
-            exists: true
-        });
-
-        userContacts[_email].push(newContact);
-        emit ContactAdded(_email, _name);
-    }
-
-    function updateEmergencyContact(
-        string memory _email,
-        uint256 _index,
-        string memory _name,
-        string memory _phone,
-        string memory _contactEmail
-    ) public {
-        require(_index < userContacts[_email].length, "Invalid contact index");
-        
-        EmergencyContact storage contact = userContacts[_email][_index];
-        contact.name = _name;
-        contact.phone = _phone;
-        contact.email = _contactEmail;
-        
-        emit ContactUpdated(_email, _name);
-    }
-
-    function deleteEmergencyContact(
-        string memory _email,
-        uint256 _index
-    ) public {
-        require(_index < userContacts[_email].length, "Invalid contact index");
-        
-        // Store the contact name for the event
-        string memory contactName = userContacts[_email][_index].name;
-        
-        // Move the last element to the deleted position
-        if (_index < userContacts[_email].length - 1) {
-            userContacts[_email][_index] = userContacts[_email][userContacts[_email].length - 1];
-        }
-        
-        // Remove the last element
-        userContacts[_email].pop();
-        
-        emit ContactDeleted(_email, contactName);
-    }
-
-    function updateSubscription(string memory _email, bool _status) public {
-        userSubscriptions[_email] = _status;
-        emit SubscriptionUpdated(_email, _status);
-    }
-
-    function getNotifications(string memory _email) public view returns (
+    function getNotifications(address _wallet) public view returns (
         string[] memory messages,
-        uint256[] memory timestamps,
-        bool[] memory readStatus,
-        string[] memory types
+        string[] memory timestamps,
+        string[] memory abnormalParameters,
+        string[] memory parameterValues,
+        string[] memory warningLevels
     ) {
-        Notification[] memory notifications = userNotifications[_email];
-        uint256 length = notifications.length;
-
+        uint256 length = userNotifications[_wallet].length;
+        
+        // Initialize arrays with the correct length
         messages = new string[](length);
-        timestamps = new uint256[](length);
-        readStatus = new bool[](length);
-        types = new string[](length);
+        timestamps = new string[](length);
+        abnormalParameters = new string[](length);
+        parameterValues = new string[](length);
+        warningLevels = new string[](length);
 
+        // Populate arrays with notification data
         for (uint256 i = 0; i < length; i++) {
-            messages[i] = notifications[i].message;
-            timestamps[i] = notifications[i].timestamp;
-            readStatus[i] = notifications[i].isRead;
-            types[i] = notifications[i].notificationType;
+            Notification storage notification = userNotifications[_wallet][i];
+            messages[i] = notification.message;
+            timestamps[i] = notification.timestamp;
+            abnormalParameters[i] = notification.abnormalParameter;
+            parameterValues[i] = notification.parameterValue;
+            warningLevels[i] = notification.warningLevel;
         }
+
+        return (messages, timestamps, abnormalParameters, parameterValues, warningLevels);
     }
 
-    function getEmergencyContacts(string memory _email) public view returns (
-        string[] memory names,
-        string[] memory phones,
-        string[] memory emails
+    function getNotificationCount(address _wallet) public view returns (uint256 total) {
+        return totalNotifications[_wallet];
+    }
+
+    function getNotificationByIndex(address _wallet, uint256 _index) public view returns (
+        string memory message,
+        string memory timestamp,
+        string memory abnormalParameter,
+        string memory parameterValue,
+        string memory warningLevel
     ) {
-        EmergencyContact[] memory contacts = userContacts[_email];
-        uint256 length = contacts.length;
-
-        names = new string[](length);
-        phones = new string[](length);
-        emails = new string[](length);
-
-        for (uint256 i = 0; i < length; i++) {
-            names[i] = contacts[i].name;
-            phones[i] = contacts[i].phone;
-            emails[i] = contacts[i].email;
-        }
+        require(_index < userNotifications[_wallet].length, "Invalid notification index");
+        
+        Notification storage notification = userNotifications[_wallet][_index];
+        
+        return (
+            notification.message,
+            notification.timestamp,
+            notification.abnormalParameter,
+            notification.parameterValue,
+            notification.warningLevel
+        );
     }
-
-    function markNotificationAsRead(string memory _email, uint256 _index) public {
-        require(_index < userNotifications[_email].length, "Invalid notification index");
-        userNotifications[_email][_index].isRead = true;
-    }
-
-    function isSubscribed(string memory _email) public view returns (bool) {
-        return userSubscriptions[_email];
-    }
-} 
+}

@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for,jsonify
 from flask_cors import CORS
 import requests
@@ -22,9 +23,9 @@ app.secret_key = 'your_secret_key_here'  # Change this to a secure secret key
 
 # Blockchain configuration
 BLOCKCHAIN_SERVER = "http://127.0.0.1:7545"
-HEALTH_RECORD_ARTIFACT_PATH = "../build/contracts/HealthRecord.json"
-USER_MANAGEMENT_ARTIFACT_PATH = "../build/contracts/UserManagement.json"
-NOTIFICATION_SYSTEM_ARTIFACT_PATH = "../build/contracts/NotificationSystem.json"
+HEALTH_RECORD_ARTIFACT_PATH = "./build/contracts/HealthRecord.json"
+USER_MANAGEMENT_ARTIFACT_PATH = "./build/contracts/UserManagement.json"
+NOTIFICATION_SYSTEM_ARTIFACT_PATH = "./build/contracts/NotificationSystem.json"
 
 def connect_with_contract(wallet_address=None, artifact=USER_MANAGEMENT_ARTIFACT_PATH):
     try:
@@ -255,20 +256,39 @@ def dashboard():
         
         # Get latest health data
         try:
-            latest_data = health_record_contract.functions.getLatestData("ESP32_001").call()
+            # Get latest record for the user's wallet address
+            latest_record = health_record_contract.functions.getLatestRecord(wallet_address).call()
+            
+            # Parse the returned data based on contract structure
             formatted_data = {
-                "temperature": latest_data[1] / 100,  # Convert back from integer
-                "heart_rate": latest_data[2],
-                "spo2": latest_data[3],
-                "timestamp": latest_data[0]
+                "timestamp": latest_record[0],
+                "temperature": float(latest_record[1]),  # Convert string to float
+                "heart_rate": int(latest_record[2]),    # Convert string to int
+                "spo2": int(latest_record[3]),          # Convert string to int
+                "systolic": float(latest_record[4]),    # Convert string to float
+                "diastolic": float(latest_record[5])    # Convert string to float
             }
+
+            # Add status indicators based on normal ranges
+            vital_status = {
+                "temperature": "normal" if 36.1 <= formatted_data["temperature"] <= 37.2 else "abnormal",
+                "heart_rate": "normal" if 60 <= formatted_data["heart_rate"] <= 100 else "abnormal",
+                "spo2": "normal" if formatted_data["spo2"] >= 95 else "abnormal",
+                "systolic": "normal" if 90 <= formatted_data["systolic"] <= 120 else "abnormal",
+                "diastolic": "normal" if 60 <= formatted_data["diastolic"] <= 80 else "abnormal"
+            }
+            formatted_data.update({"status": vital_status})
+
         except Exception as data_error:
             print(f"Error getting health data: {str(data_error)}")
             formatted_data = {
+                "timestamp": None,
                 "temperature": None,
                 "heart_rate": None,
                 "spo2": None,
-                "timestamp": None
+                "systolic": None,
+                "diastolic": None,
+                "status": {}
             }
         
         # Get notifications/alerts
@@ -279,7 +299,7 @@ def dashboard():
             for i in range(len(messages)):
                 alerts.append({
                     'message': messages[i],
-                    'timestamp': datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d %H:%M:%S'),
+                    'timestamp': datetime.fromtimestamp(int(timestamps[i])).strftime('%Y-%m-%d %H:%M:%S'),
                     'type': types[i]
                 })
         except Exception as alert_error:
@@ -293,14 +313,16 @@ def dashboard():
                              
     except Exception as e:
         print(f"Error in dashboard: {str(e)}")
-        # Provide default values when there's an error
         return render_template('dashboard.html', 
                              error=str(e),
                              latest_data={
+                                 "timestamp": None,
                                  "temperature": None,
                                  "heart_rate": None,
                                  "spo2": None,
-                                 "timestamp": None
+                                 "systolic": None,
+                                 "diastolic": None,
+                                 "status": {}
                              },
                              alerts=[],
                              user_name=session.get('user_name'))
@@ -379,141 +401,6 @@ def update_profile():
         print(f"Profile update error: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/profile/settings', methods=['POST'])
-@login_required
-def update_settings():
-    user_email = session['user_id']
-    
-    try:
-        # Convert settings to integers (multiply by 100 for precision)
-        settings = {
-            'hr_high': int(float(request.form.get('hr_high'))),
-            'hr_low': int(float(request.form.get('hr_low'))),
-            'spo2_low': int(float(request.form.get('spo2_low'))),
-            'temp_high': int(float(request.form.get('temp_high')) * 100),
-            'temp_low': int(float(request.form.get('temp_low')) * 100)
-        }
-        
-        # Update settings on blockchain
-        tx = user_contract.functions.updateSettings(
-            user_email,
-            settings['hr_high'],
-            settings['hr_low'],
-            settings['spo2_low'],
-            settings['temp_high'],
-            settings['temp_low']
-        ).buildTransaction({
-            'from': user_web3.eth.default_account,
-            'nonce': user_web3.eth.get_transaction_count(user_web3.eth.default_account)
-        })
-        
-        # Sign and send transaction
-        signed_tx = user_web3.eth.account.sign_transaction(tx, BLOCKCHAIN_PRIVATE_KEY)
-        tx_hash = user_web3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        
-    except Exception as e:
-        print(f"Settings update error: {str(e)}")
-    
-    return redirect(url_for('profile'))
-
-@app.route('/profile/password', methods=['POST'])
-@login_required
-def change_password():
-    user_email = session['user_id']
-    current_password = request.form.get('current_password')
-    new_password = request.form.get('new_password')
-    confirm_password = request.form.get('confirm_password')
-    
-    if new_password != confirm_password:
-        return redirect(url_for('profile'))
-    
-    try:
-        # Hash passwords
-        current_hash = user_web3.keccak(text=current_password).hex()
-        new_hash = user_web3.keccak(text=new_password).hex()
-        
-        # Verify current password
-        if user_contract.functions.verifyPassword(user_email, current_hash).call():
-            # Update password on blockchain
-            tx = user_contract.functions.changePassword(user_email, new_hash).buildTransaction({
-                'from': user_web3.eth.default_account,
-                'nonce': user_web3.eth.get_transaction_count(user_web3.eth.default_account),
-                'gas': 2000000,
-                'gasPrice': user_web3.eth.gas_price
-            })
-            
-            # Sign and send transaction
-            signed_tx = user_web3.eth.account.sign_transaction(tx, BLOCKCHAIN_PRIVATE_KEY)
-            tx_hash = user_web3.eth.send_raw_transaction(signed_tx.rawTransaction)
-            
-    except Exception as e:
-        print(f"Password change error: {str(e)}")
-    
-    return redirect(url_for('profile'))
-
-@app.route('/notifications')
-@login_required
-def notifications():
-    user_email = session['user_id']
-    
-    try:
-        # Get notifications from blockchain
-        messages, timestamps, read_status, types = notification_contract.functions.getNotifications(user_email).call()
-        
-        # Format notifications
-        notifications = []
-        for i in range(len(messages)):
-            notifications.append({
-                'message': messages[i],
-                'timestamp': datetime.fromtimestamp(timestamps[i]).strftime('%Y-%m-%d %H:%M:%S'),
-                'is_read': read_status[i],
-                'type': types[i],
-                'index': i
-            })
-        
-        # Get unread count for badge
-        unread_count = sum(1 for status in read_status if not status)
-        
-        return render_template('notifications.html', 
-                             notifications=notifications,
-                             unread_count=unread_count)
-        
-    except Exception as e:
-        print(f"Notifications error: {str(e)}")
-        return render_template('notifications.html', 
-                             notifications=[],
-                             unread_count=0)
-
-@app.route('/notifications/mark-read/<int:index>', methods=['POST'])
-@login_required
-def mark_notification_read(index):
-    user_email = session['user_id']
-    
-    try:
-        # Mark notification as read on blockchain
-        tx = notification_contract.functions.markNotificationAsRead(user_email, index).buildTransaction({
-            'from': notification_web3.eth.default_account,
-            'nonce': notification_web3.eth.get_transaction_count(notification_web3.eth.default_account),
-            'gas': 2000000,
-            'gasPrice': notification_web3.eth.gas_price
-        })
-        
-        # Sign and send transaction
-        signed_tx = notification_web3.eth.account.sign_transaction(tx, BLOCKCHAIN_PRIVATE_KEY)
-        tx_hash = notification_web3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        
-        # Wait for transaction receipt
-        receipt = notification_web3.eth.wait_for_transaction_receipt(tx_hash)
-        
-        if receipt['status'] == 1:
-            return jsonify({'status': 'success'})
-        else:
-            return jsonify({'status': 'error', 'message': 'Transaction failed'}), 500
-            
-    except Exception as e:
-        print(f"Mark notification read error: {str(e)}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
 @app.route('/emergency-contacts')
 @login_required
 def emergency_contacts():
@@ -581,199 +468,6 @@ def add_emergency_contact():
     except Exception as e:
         print(f"Add emergency contact error: {str(e)}")
         return render_template('emergency_contacts.html', error=f'Error adding contact: {str(e)}')
-
-# Unused route - no UI implementation
-# @app.route('/subscription/update', methods=['POST'])
-# @login_required
-# def update_subscription():
-#     user_email = session['user_id']
-#     status = request.form.get('status') == 'true'
-    
-#     try:
-#         # Update subscription status on blockchain
-#         tx = notification_contract.functions.updateSubscription(user_email, status).buildTransaction({
-#             'from': notification_web3.eth.default_account,
-#             'nonce': notification_web3.eth.get_transaction_count(notification_web3.eth.default_account),
-#             'gas': 2000000,
-#             'gasPrice': notification_web3.eth.gas_price
-#         })
-        
-#         # Sign and send transaction
-#         signed_tx = notification_web3.eth.account.sign_transaction(tx, 'YOUR_PRIVATE_KEY')
-#         tx_hash = notification_web3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        
-#     except Exception as e:
-#         print(f"Update subscription error: {str(e)}")
-    
-#     return jsonify({'status': 'success'})
-
-@app.route('/api/health-data', methods=['GET'])
-def get_health_data():
-    try:
-        device_id = request.args.get('device_id', 'ESP32_001')
-        
-        # Update function name based on your contract
-        data = health_contract.functions.getDeviceData(device_id).call()
-        
-        # Add null checks and proper indexing
-        if not data or len(data) < 5:
-            return jsonify({
-                "status": "error",
-                "message": "No data available"
-            }), 404
-            
-        return jsonify({
-            "status": "success",
-            "data": {
-                "temperature": data[0] / 100 if data[0] is not None else None,
-                "heart_rate": data[1] if data[1] is not None else None,
-                "spo2": data[2] if data[2] is not None else None,
-                "systolic": data[3] if data[3] is not None else None,
-                "diastolic": data[4] if data[4] is not None else None
-            }
-        })
-
-    except Exception as e:
-        print(f"Error in health data endpoint: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-@app.route('/api/health-data/latest', methods=['GET'])
-def get_latest_data():
-    try:
-        device_id = "ESP32_001"
-        latest_data = health_contract.functions.getLatestData(device_id).call()
-        
-        return jsonify({
-            "temperature": latest_data[1] / 100,  # Convert back from integer
-            "heart_rate": latest_data[2],
-            "spo2": latest_data[3],
-            "timestamp": latest_data[0]
-        })
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-@app.route('/api/alerts/<device_id>', methods=['GET'])
-def get_device_alerts(device_id):
-    try:
-        alerts = health_contract.functions.getDeviceAlerts(device_id).call()
-        return jsonify({
-            "status": "success",
-            "alerts": alerts
-        })
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-
-def check_health_alerts(user_email, health_data):
-    try:
-        # Get user settings
-        hr_high, hr_low, spo2_low, temp_high, temp_low = user_contract.functions.getUserSettings(user_email).call()
-        
-        # Check for alerts
-        alerts = []
-        
-        if health_data['heart_rate'] > hr_high:
-            alerts.append({
-                'message': f'High heart rate alert: {health_data["heart_rate"]} bpm',
-                'type': 'alert'
-            })
-        elif health_data['heart_rate'] < hr_low:
-            alerts.append({
-                'message': f'Low heart rate alert: {health_data["heart_rate"]} bpm',
-                'type': 'alert'
-            })
-            
-        if health_data['spo2'] < spo2_low:
-            alerts.append({
-                'message': f'Low SpO2 alert: {health_data["spo2"]}%',
-                'type': 'alert'
-            })
-            
-        if health_data['temperature'] > temp_high / 100:
-            alerts.append({
-                'message': f'High temperature alert: {health_data["temperature"]}°C',
-                'type': 'alert'
-            })
-        elif health_data['temperature'] < temp_low / 100:
-            alerts.append({
-                'message': f'Low temperature alert: {health_data["temperature"]}°C',
-                'type': 'alert'
-            })
-            
-        # Check blood pressure alerts
-        if health_data['systolic'] > 140:
-            alerts.append({
-                'message': f'High systolic pressure alert: {health_data["systolic"]} mmHg',
-                'type': 'alert'
-            })
-        elif health_data['systolic'] < 90:
-            alerts.append({
-                'message': f'Low systolic pressure alert: {health_data["systolic"]} mmHg',
-                'type': 'alert'
-            })
-            
-        if health_data['diastolic'] > 90:
-            alerts.append({
-                'message': f'High diastolic pressure alert: {health_data["diastolic"]} mmHg',
-                'type': 'alert'
-            })
-        elif health_data['diastolic'] < 60:
-            alerts.append({
-                'message': f'Low diastolic pressure alert: {health_data["diastolic"]} mmHg',
-                'type': 'alert'
-            })
-        
-        # Add alerts to blockchain
-        for alert in alerts:
-            tx = notification_contract.functions.addNotification(
-                user_email,
-                alert['message'],
-                alert['type']
-            ).buildTransaction({
-                'from': notification_web3.eth.default_account,
-                'nonce': notification_web3.eth.get_transaction_count(notification_web3.eth.default_account),
-                'gas': 2000000,
-                'gasPrice': notification_web3.eth.gas_price
-            })
-            
-            signed_tx = notification_web3.eth.account.sign_transaction(tx, BLOCKCHAIN_PRIVATE_KEY)
-            tx_hash = notification_web3.eth.send_raw_transaction(signed_tx.rawTransaction)
-            
-    except Exception as e:
-        print(f"Health alert check error: {str(e)}")
-
-@app.route('/api/notifications/count')
-@login_required
-def get_notification_count():
-    try:
-        user_email = session.get('user_id')
-        if not user_email:
-            return jsonify({'count': 0})
-            
-        messages, timestamps, read_status, types = notification_contract.functions.getNotifications(user_email).call()
-        
-        # Add null check for read_status
-        if not read_status:
-            return jsonify({'count': 0})
-            
-        unread_count = sum(1 for status in read_status if not status)
-        
-        return jsonify({
-            'count': unread_count
-        })
-    except Exception as e:
-        print(f"Error getting notification count: {str(e)}")
-        return jsonify({
-            'count': 0
-        })
 
 @app.route('/emergency-contacts/edit/<int:index>', methods=['POST'])
 @login_required
@@ -848,19 +542,177 @@ def delete_emergency_contact(index):
         print(f"Delete emergency contact error: {str(e)}")
         return render_template('emergency_contacts.html', error=f'Error deleting contact: {str(e)}')
 
-@app.route('/debug/check-user/<email>')
-def debug_check_user(email):
+@app.route("/sensorData")
+def sensor_data():
     try:
-        user_data = user_contract.functions.getUserData(email).call()
-        return jsonify({
-            'exists': user_data[4],
-            'name': user_data[0],
-            'wallet': user_contract.functions.getUserWallet(email).call()
-        })
+        # Get sensor data from request parameters
+        temp = float(request.args.get('temp'))
+        hr = int(request.args.get('hr'))
+        spo2 = int(request.args.get('spo2'))
+        systolic = float(request.args.get('systolic'))
+        diastolic = float(request.args.get('diastolic'))
+        
+        # Validate parameters existence
+        if not all([temp, hr, spo2, systolic, diastolic]):
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing parameters'
+            }), 400
+
+        # Define normal ranges for vital signs
+        VITAL_RANGES = {
+            'temperature': {'min': 36.1, 'max': 37.2, 
+                          'mild': {'min': 35.0, 'max': 38.5},
+                          'severe': {'min': 34.0, 'max': 39.5}},
+            'heart_rate': {'min': 60, 'max': 100,
+                          'mild': {'min': 50, 'max': 120},
+                          'severe': {'min': 40, 'max': 140}},
+            'spo2': {'min': 95, 'max': 100,
+                    'mild': {'min': 90, 'max': 100},
+                    'severe': {'min': 85, 'max': 100}},
+            'systolic': {'min': 90, 'max': 120,
+                        'mild': {'min': 80, 'max': 140},
+                        'severe': {'min': 70, 'max': 160}},
+            'diastolic': {'min': 60, 'max': 80,
+                         'mild': {'min': 50, 'max': 90},
+                         'severe': {'min': 40, 'max': 100}}
+        }
+
+        def check_vital_severity(value, ranges, vital_name):
+            if ranges['min'] <= value <= ranges['max']:
+                return None
+            elif ranges['mild']['min'] <= value <= ranges['mild']['max']:
+                return {
+                    'level': 'MILD',
+                    'message': f'Mild abnormality in {vital_name}: {value}',
+                    'parameter': vital_name,
+                    'value': str(value)
+                }
+            else:
+                return {
+                    'level': 'SEVERE',
+                    'message': f'Severe abnormality in {vital_name}: {value}',
+                    'parameter': vital_name,
+                    'value': str(value)
+                }
+
+        # Check each vital sign and collect abnormalities
+        abnormalities = []
+        
+        temp_status = check_vital_severity(temp, VITAL_RANGES['temperature'], 'Temperature')
+        if temp_status:
+            abnormalities.append(temp_status)
+            
+        hr_status = check_vital_severity(hr, VITAL_RANGES['heart_rate'], 'Heart Rate')
+        if hr_status:
+            abnormalities.append(hr_status)
+            
+        spo2_status = check_vital_severity(spo2, VITAL_RANGES['spo2'], 'SpO2')
+        if spo2_status:
+            abnormalities.append(spo2_status)
+            
+        systolic_status = check_vital_severity(systolic, VITAL_RANGES['systolic'], 'Systolic BP')
+        if systolic_status:
+            abnormalities.append(systolic_status)
+            
+        diastolic_status = check_vital_severity(diastolic, VITAL_RANGES['diastolic'], 'Diastolic BP')
+        if diastolic_status:
+            abnormalities.append(diastolic_status)
+
+        try:
+            # Get current timestamp
+            current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Connect to notification contract
+            notification_contract, web3 = connect_with_contract(session['wallet_address'], NOTIFICATION_SYSTEM_ARTIFACT_PATH)
+
+            # Add notifications for each abnormality
+            for abnormality in abnormalities:
+                notification_contract.functions.addNotification(
+                    session['wallet_address'],
+                    abnormality['message'],
+                    current_timestamp,
+                    abnormality['parameter'],
+                    abnormality['value'],
+                    abnormality['level']
+                ).transact()
+
+            # Store sensor data in health record contract
+            health_contract, web3 = connect_with_contract(session['wallet_address'], HEALTH_RECORD_ARTIFACT_PATH)
+            
+            # Convert numeric values to strings as per contract requirements
+            tx_hash = health_contract.functions.addHealthRecord(
+                current_timestamp,                    # _timestamp
+                str(temp),                           # _temperature
+                str(hr),                             # _heartRate
+                str(spo2),                           # _spo2
+                str(systolic),                       # _systolic
+                str(diastolic),                      # _diastolic
+                session['wallet_address']            # _wallet
+            ).transact()
+
+            return jsonify({
+                'status': 'success',
+                'message': 'Health data recorded successfully',
+                'abnormalities': abnormalities,
+                'tx_hash': tx_hash.hex()
+            })
+
+        except Exception as contract_error:
+            print(f"Contract interaction error: {str(contract_error)}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Failed to record health data: {str(contract_error)}'
+            }), 500
+            
     except Exception as e:
+        print(f"Sensor data processing error: {str(e)}")
         return jsonify({
-            'error': str(e)
+            'status': 'error',
+            'message': f'Error processing sensor data: {str(e)}'
         }), 500
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    try:
+        wallet_address = session['wallet_address']
+        notification_contract, _ = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
+        
+        # Get notifications from blockchain
+        messages, timestamps, abnormal_params, param_values, warning_levels = (
+            notification_contract.functions.getNotifications(wallet_address).call()
+        )
+        
+        # Format notifications
+        notifications = []
+        for i in range(len(messages)):
+            notification_type = "alert" if warning_levels[i] == "HIGH" else (
+                "warning" if warning_levels[i] == "MEDIUM" else "info"
+            )
+            
+            notifications.append({
+                'index': i,
+                'message': messages[i],
+                'timestamp': datetime.fromtimestamp(int(timestamps[i])).strftime('%Y-%m-%d %H:%M:%S'),
+                'abnormal_parameter': abnormal_params[i],
+                'parameter_value': param_values[i],
+                'type': notification_type,
+                'warning_level': warning_levels[i]
+            })
+            
+        # Sort notifications by timestamp (newest first)
+        notifications.sort(key=lambda x: x['timestamp'], reverse=True)
+                
+        return render_template('notifications.html', 
+                             notifications=notifications)
+                             
+    except Exception as e:
+        print(f"Notifications error: {str(e)}")
+        return render_template('notifications.html', 
+                             error=f'Error loading notifications: {str(e)}',
+                             notifications=[]
+                             )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 

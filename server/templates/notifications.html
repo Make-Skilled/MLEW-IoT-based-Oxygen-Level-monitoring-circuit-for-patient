@@ -72,7 +72,6 @@
         margin-bottom: 1rem;
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         transition: all 0.3s ease;
-        border-left: 4px solid transparent;
         position: relative;
         overflow: hidden;
         animation: slideIn 0.3s ease-out;
@@ -81,23 +80,6 @@
     .notification-card:hover {
         transform: translateX(5px);
         box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    }
-
-    .notification-card.unread {
-        border-left-color: var(--primary-color);
-        background: #f8f9fa;
-    }
-
-    .notification-card.unread::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: -4px;
-        transform: translateY(-50%);
-        width: 8px;
-        height: 8px;
-        background: var(--primary-color);
-        border-radius: 50%;
     }
 
     .notification-icon {
@@ -257,21 +239,12 @@
 <div class="container">
     <div class="notifications-header">
         <h2><i class="fas fa-bell"></i> Notifications</h2>
-        {% if unread_count > 0 %}
-        <span class="notification-count">
-            {{ unread_count }} Unread
-        </span>
-        {% endif %}
     </div>
 
     <div class="notification-filters">
         <button class="filter-btn active" data-filter="all">
             <i class="fas fa-list"></i> All
             <span class="filter-count">{{ notifications|length }}</span>
-        </button>
-        <button class="filter-btn" data-filter="unread">
-            <i class="fas fa-envelope"></i> Unread
-            <span class="filter-count">{{ unread_count }}</span>
         </button>
         <button class="filter-btn" data-filter="alerts">
             <i class="fas fa-exclamation-circle"></i> Alerts
@@ -281,9 +254,7 @@
 
     {% if notifications %}
         {% for notification in notifications %}
-        <div class="notification-card {% if not notification.is_read %}unread{% endif %}" 
-             data-type="{{ notification.type }}"
-             data-read="{{ notification.is_read|lower }}">
+        <div class="notification-card" data-type="{{ notification.type }}">
             <div class="d-flex align-items-start">
                 <div class="notification-icon {{ notification.type }}">
                     {% if notification.type == 'alert' %}
@@ -309,17 +280,6 @@
                         <i class="far fa-clock"></i>
                         {{ notification.timestamp }}
                     </div>
-                    {% if not notification.is_read %}
-                    <div class="notification-actions">
-                        <form action="{{ url_for('mark_notification_read', index=notification.index) }}" 
-                              method="POST" 
-                              class="d-inline mark-read-form">
-                            <button type="submit" class="btn-mark-read">
-                                <i class="fas fa-check"></i> Mark as Read
-                            </button>
-                        </form>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -339,7 +299,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const filterButtons = document.querySelectorAll('.filter-btn');
     const notificationCards = document.querySelectorAll('.notification-card');
-    const markReadForms = document.querySelectorAll('.mark-read-form');
 
     // Handle filter buttons
     filterButtons.forEach(button => {
@@ -354,74 +313,12 @@ document.addEventListener('DOMContentLoaded', function() {
             notificationCards.forEach(card => {
                 if (filter === 'all') {
                     card.classList.remove('hidden');
-                } else if (filter === 'unread') {
-                    card.classList.toggle('hidden', card.getAttribute('data-read') === 'true');
                 } else if (filter === 'alerts') {
                     card.classList.toggle('hidden', card.getAttribute('data-type') !== 'alert');
                 }
             });
         });
     });
-
-    // Handle mark as read forms
-    markReadForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const button = this.querySelector('button');
-            
-            // Disable button and show loading state
-            button.disabled = true;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Marking as Read...';
-            
-            fetch(this.action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    const card = this.closest('.notification-card');
-                    card.classList.remove('unread');
-                    card.setAttribute('data-read', 'true');
-                    this.remove();
-                    
-                    // Update unread count
-                    const unreadCount = document.querySelector('.notification-count');
-                    if (unreadCount) {
-                        const currentCount = parseInt(unreadCount.textContent);
-                        if (currentCount > 1) {
-                            unreadCount.textContent = `${currentCount - 1} Unread`;
-                        } else {
-                            unreadCount.remove();
-                        }
-                    }
-                    
-                    // Update filter counts
-                    updateFilterCounts();
-                } else {
-                    throw new Error(data.message || 'Failed to mark as read');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                button.disabled = false;
-                button.innerHTML = '<i class="fas fa-check"></i> Mark as Read';
-            });
-        });
-    });
-
-    function updateFilterCounts() {
-        const unreadCount = document.querySelectorAll('.notification-card[data-read="false"]').length;
-        const alertCount = document.querySelectorAll('.notification-card[data-type="alert"]').length;
-        const totalCount = document.querySelectorAll('.notification-card').length;
-
-        // Update filter counts
-        document.querySelector('[data-filter="all"] .filter-count').textContent = totalCount;
-        document.querySelector('[data-filter="unread"] .filter-count').textContent = unreadCount;
-        document.querySelector('[data-filter="alerts"] .filter-count').textContent = alertCount;
-    }
 });
 </script>
 {% endblock %} 

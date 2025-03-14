@@ -25,6 +25,8 @@ const int channelID = 2839570;
 
 MAX30105 particleSensor;
 
+const char* apiRoute="http://172.20.10.2:2000/sensorData?temp=";
+
 const byte RATE_SIZE = 4;
 byte rates[RATE_SIZE];
 byte rateSpot = 0;
@@ -236,6 +238,8 @@ bool sendDataToThingSpeak(float temp, int hr, int spo2, float systolic, float di
         http.end();
         return false;
     }
+
+    sendDataToApi(temp, hr, spo2, systolic, diastolic);
 }
 
 void checkSensorStatus() {
@@ -247,4 +251,26 @@ void estimateBloodPressure(float heartRate, float spo2) {
     // Simple estimation formula (You can adjust this)
     systolic = 120 + (heartRate - 75) * 0.5;
     diastolic = 80 + (spo2 - 95) * 0.2;
+}
+void sendDataToApi(float temp, int hr, int spo2, float systolic, float diastolic) {
+    if (WiFi.status() != WL_CONNECTED) {
+        if (!connectWiFi()) {
+            Serial.println("Failed to reconnect WiFi.");
+            return;
+        }
+    }
+
+    HTTPClient http;
+    String url = String(apiRoute) + String(temp) + "&hr=" + String(hr) + "&spo2=" + String(spo2) + "&systolic=" + String(systolic) + "&diastolic=" + String(diastolic);
+    http.begin(url);
+    int httpCode = http.GET();
+    if (httpCode > 0) {
+        Serial.println("API Response: " + http.getString());
+        digitalWrite(STATUS_LED, HIGH);
+        http.end();
+    } else {
+        Serial.println("HTTP Error: " + String(httpCode));
+        digitalWrite(ERROR_LED, HIGH);
+        http.end();
+    }
 }
