@@ -245,7 +245,7 @@ void sendDataToApi(float temp, int hr, int spo2, float systolic, float diastolic
     }
 
     HTTPClient http;
-    String url = String(apiRoute) + temp + "&hr=" + hr + "&spo2=" + spo2 + "&systolic=" + systolic + "&diastolic=" + diastolic;
+    String url = String(apiRoute) + temp + "&hr=" + hr + "&spo2=" + spo2 + "&systolic=" + systolic + "&diastolic=" + diastolic+"&wallet=0xB83f47eCE6e49a3A6061D0f7c33E746AF4662966";
     http.begin(url);
     int httpCode = http.GET();
     if (httpCode > 0) {
