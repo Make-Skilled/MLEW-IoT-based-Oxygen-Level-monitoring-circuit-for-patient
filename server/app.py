@@ -339,34 +339,14 @@ def logout():
 @login_required
 def profile():
     user_email = session['user_id']
-    
+    print(user_email)
     try:
         # Get user data from blockchain
-        name, email, wallet_address = user_contract.functions.getUser(user_email).call()
-        
-        # Get user settings from blockchain
-        try:
-            hr_high, hr_low, spo2_low, temp_high, temp_low = user_contract.functions.getUserSettings(user_email).call()
-            settings = {
-                'hr_high': hr_high,
-                'hr_low': hr_low,
-                'spo2_low': spo2_low,
-                'temp_high': temp_high / 100,  # Convert back from integer
-                'temp_low': temp_low / 100     # Convert back from integer
-            }
-        except:
-            # Default settings if not set
-            settings = {
-                'hr_high': 100,
-                'hr_low': 60,
-                'spo2_low': 95,
-                'temp_high': 37.8,
-                'temp_low': 35.0
-            }
+        name, wallet_address = user_contract.functions.getUser(user_email).call()
         
         return render_template('profile.html', 
-                             user={'name': name, 'email': email, 'wallet_address': wallet_address},
-                             settings=settings)
+                             user={'name': name, 'email': user_email, 'wallet_address': wallet_address},
+                             )
                              
     except Exception as e:
         print(f"Profile error: {str(e)}")

@@ -186,43 +186,8 @@
                 <p><i class="fas fa-wallet me-2"></i>{{ user.wallet_address }}</p>
             </div>
         </div>
-
-        <div class="profile-stats">
-            <div class="stat-card">
-                <i class="fas fa-heartbeat"></i>
-                <h4>Health Records</h4>
-                <p>{{ user.health_records_count }}</p>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-bell"></i>
-                <h4>Notifications</h4>
-                <p>{{ user.notifications_count }}</p>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-address-book"></i>
-                <h4>Emergency Contacts</h4>
-                <p>{{ user.emergency_contacts_count }}</p>
-            </div>
         </div>
     </div>
 
-    <div class="settings-section">
-        <h3><i class="fas fa-cog"></i>Account Settings</h3>
-        <form method="POST" action="{{ url_for('update_profile') }}">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="name" class="form-label">Name</label>
-                    <input type="text" class="form-control" id="name" name="name" value="{{ user.name }}" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-save">
-                <i class="fas fa-save me-2"></i>Save Changes
-            </button>
-        </form>
-    </div>
 </div>
 {% endblock %} 
