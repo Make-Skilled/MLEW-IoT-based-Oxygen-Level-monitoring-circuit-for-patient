@@ -25,7 +25,7 @@ const int channelID = 2839570;
 
 MAX30105 particleSensor;
 
-const char* apiRoute="http://192.168.0.199:5000/sensorData?temp=";
+const char* apiRoute="http://192.168.18.24:5000/sensorData?temp=";
 
 const byte RATE_SIZE = 4;
 byte rates[RATE_SIZE];
@@ -115,12 +115,6 @@ void loop() {
     sensors.requestTemperatures();
     temperature = sensors.getTempCByIndex(0);
 
-    // Validate readings (Only continue if readings are valid)
-//    if (!isValidReading(temperature, 20, 45) || !isValidReading(heartRate, 30, 200) || !isValidReading(spo2, 70, 100)) {
-//        Serial.println("Invalid sensor readings. Please check the sensor.");
-//        digitalWrite(ERROR_LED, HIGH);  // Turn on error LED
-//        return;  // Exit loop if readings are invalid
-//    }
 
     // Filter and smooth out sensor readings
     filterReadings(&heartRate, &spo2, &temperature);
@@ -147,17 +141,8 @@ void loop() {
     Serial.print(diastolic);
     Serial.println(" mmHg");
 
-    // Send data to ThingSpeak if readings are valid
-    if (validHeartRate && validSPO2) {
-        if (!sendDataToThingSpeak(temperature, heartRate, spo2, systolic, diastolic)) {
-            Serial.println("Failed to send data to ThingSpeak");
-            digitalWrite(ERROR_LED, HIGH);  // Turn on error LED for failure
-        }
-    }
-
-    // Enable deep sleep for 100 seconds (to save power)
-    esp_sleep_enable_timer_wakeup(100000);  // Sleep for 100 seconds
-    esp_light_sleep_start();  // Enter light sleep mode
+  sendDataToThingSpeak(temperature,heartRate,spo2,systolic,diastolic);
+  sendDataToApi(temperature,heartRate,spo2,systolic,diastolic);
 }
 
 bool connectWiFi() {
@@ -238,8 +223,6 @@ bool sendDataToThingSpeak(float temp, int hr, int spo2, float systolic, float di
         http.end();
         return false;
     }
-
-    sendDataToApi(temp, hr, spo2, systolic, diastolic);
 }
 
 void checkSensorStatus() {
@@ -252,7 +235,7 @@ void estimateBloodPressure(float heartRate, float spo2) {
     systolic = 120 + (heartRate - 75) * 0.5;
     diastolic = 80 + (spo2 - 95) * 0.2;
 }
-void sendDataToApi(String temp, String hr, String spo2, String systolic, String diastolic) {
+void sendDataToApi(float temp, int hr, int spo2, float systolic, float diastolic) {
     if (WiFi.status() != WL_CONNECTED) {
         if (!connectWiFi()) {
             Serial.println("Failed to reconnect WiFi.");
@@ -261,7 +244,7 @@ void sendDataToApi(String temp, String hr, String spo2, String systolic, String 
     }
 
     HTTPClient http;
-    String url = String(apiRoute) + String(temp) + "&hr=" + String(hr) + "&spo2=" + String(spo2) + "&systolic=" + String(systolic) + "&diastolic=" + String(diastolic);
+    String url = String(apiRoute) + temp + "&hr=" + hr + "&spo2=" + spo2 + "&systolic=" + systolic + "&diastolic=" + diastolic;
     http.begin(url);
     int httpCode = http.GET();
     if (httpCode > 0) {

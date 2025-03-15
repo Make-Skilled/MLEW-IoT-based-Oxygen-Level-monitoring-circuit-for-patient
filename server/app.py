@@ -95,31 +95,26 @@ def login():
                 if not user_exists:
                     return render_template('login.html', error='User not found')
                 
-                # Hash the password - Make sure to use the same method as signup
+                # Hash the password
                 password_hash = Web3.keccak(text=password).hex()
-                # Add '0x' prefix if not present
                 if not password_hash.startswith('0x'):
                     password_hash = '0x' + password_hash
                 
-                # Get stored password hash
-                stored_password = user_contract.functions.getUserPassword(email).call()
-                
-                # Debug prints
-                print(f"Input password hash: {password_hash}")
-                print(f"Stored password hash: {stored_password}")
-                
-                # Verify password using the contract's function
-                is_valid = user_contract.functions.verifyPassword(email, Web3.toBytes(hexstr=password_hash)).call()
+                # Verify login
+                is_valid = user_contract.functions.verifyLogin(
+                    email,
+                    Web3.toBytes(hexstr=password_hash)
+                ).call()
                 
                 if is_valid:
-                    # Get additional user data
-                    wallet_address = user_contract.functions.getUserWallet(email).call()
-                    name = user_contract.functions.getUserName(email).call()
-                    
+                    # Get user data
+                    name, wallet_address = user_contract.functions.getUser(email).call()
+                    print(name, wallet_address)
                     # Set session data
                     session['user_id'] = email
                     session['wallet_address'] = wallet_address
                     session['user_name'] = name
+                    print(session['wallet_address'])
                     return redirect(url_for('dashboard'))
                 else:
                     return render_template('login.html', error='Invalid password')
@@ -158,12 +153,11 @@ def signup():
             
             # Hash the password
             password_hash = Web3.keccak(text=password).hex()
-            # Add '0x' prefix if not present
             if not password_hash.startswith('0x'):
                 password_hash = '0x' + password_hash
             
             try:
-                # Register user directly
+                # Register user
                 tx = user_contract_instance.functions.registerUser(
                     email,
                     name,
@@ -401,150 +395,10 @@ def update_profile():
         print(f"Profile update error: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/emergency-contacts')
-@login_required
-def emergency_contacts():
-    user_email = session['user_id']
-    wallet_address = session['wallet_address']
-    
-    try:
-        # Create contract instance with user's wallet
-        notification_contract_instance, _ = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
-        
-        # Get emergency contacts from blockchain
-        names, phones, emails = notification_contract_instance.functions.getEmergencyContacts(user_email).call()
-        
-        # Format contacts
-        contacts = []
-        for i in range(len(names)):
-            contacts.append({
-                'name': names[i],
-                'phone': phones[i],
-                'email': emails[i]
-            })
-        
-        return render_template('emergency_contacts.html', contacts=contacts)
-        
-    except Exception as e:
-        print(f"Emergency contacts error: {str(e)}")
-        return render_template('emergency_contacts.html', error=f'Error loading contacts: {str(e)}')
-
-@app.route('/emergency-contacts/add', methods=['POST'])
-@login_required
-def add_emergency_contact():
-    user_email = session['user_id']
-    wallet_address = session['wallet_address']
-    name = request.form.get('name')
-    phone = request.form.get('phone')
-    contact_email = request.form.get('email')
-    
-    if not all([name, phone, contact_email]):
-        return render_template('emergency_contacts.html', error='All fields are required')
-    
-    try:
-        # Create contract instance with user's wallet
-        notification_contract_instance, notification_web3_instance = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
-        
-        # Add emergency contact on blockchain
-        tx_hash = notification_contract_instance.functions.addEmergencyContact(
-            user_email,
-            name,
-            phone,
-            contact_email
-        ).transact({
-            'from': wallet_address,
-            'gas': 2000000,
-            'gasPrice': notification_web3_instance.eth.gas_price
-        })
-        
-        # Wait for transaction receipt
-        receipt = notification_web3_instance.eth.wait_for_transaction_receipt(tx_hash)
-        
-        if receipt['status'] == 1:  # Transaction successful
-            return redirect(url_for('emergency_contacts'))
-        else:
-            return render_template('emergency_contacts.html', error='Failed to add emergency contact')
-            
-    except Exception as e:
-        print(f"Add emergency contact error: {str(e)}")
-        return render_template('emergency_contacts.html', error=f'Error adding contact: {str(e)}')
-
-@app.route('/emergency-contacts/edit/<int:index>', methods=['POST'])
-@login_required
-def edit_emergency_contact(index):
-    user_email = session['user_id']
-    wallet_address = session['wallet_address']
-    name = request.form.get('name')
-    phone = request.form.get('phone')
-    contact_email = request.form.get('email')
-    
-    if not all([name, phone, contact_email]):
-        return render_template('emergency_contacts.html', error='All fields are required')
-    
-    try:
-        # Create contract instance with user's wallet
-        notification_contract_instance, notification_web3_instance = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
-        
-        # Update emergency contact on blockchain
-        tx_hash = notification_contract_instance.functions.updateEmergencyContact(
-            user_email,
-            index,
-            name,
-            phone,
-            contact_email
-        ).transact({
-            'from': wallet_address,
-            'gas': 2000000,
-            'gasPrice': notification_web3_instance.eth.gas_price
-        })
-        
-        # Wait for transaction receipt
-        receipt = notification_web3_instance.eth.wait_for_transaction_receipt(tx_hash)
-        
-        if receipt['status'] == 1:  # Transaction successful
-            return redirect(url_for('emergency_contacts'))
-        else:
-            return render_template('emergency_contacts.html', error='Failed to update emergency contact')
-            
-    except Exception as e:
-        print(f"Edit emergency contact error: {str(e)}")
-        return render_template('emergency_contacts.html', error=f'Error updating contact: {str(e)}')
-
-@app.route('/emergency-contacts/delete/<int:index>', methods=['POST'])
-@login_required
-def delete_emergency_contact(index):
-    user_email = session['user_id']
-    wallet_address = session['wallet_address']
-    
-    try:
-        # Create contract instance with user's wallet
-        notification_contract_instance, notification_web3_instance = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
-        
-        # Delete emergency contact on blockchain
-        tx_hash = notification_contract_instance.functions.deleteEmergencyContact(
-            user_email,
-            index
-        ).transact({
-            'from': wallet_address,
-            'gas': 2000000,
-            'gasPrice': notification_web3_instance.eth.gas_price
-        })
-        
-        # Wait for transaction receipt
-        receipt = notification_web3_instance.eth.wait_for_transaction_receipt(tx_hash)
-        
-        if receipt['status'] == 1:  # Transaction successful
-            return redirect(url_for('emergency_contacts'))
-        else:
-            return render_template('emergency_contacts.html', error='Failed to delete emergency contact')
-            
-    except Exception as e:
-        print(f"Delete emergency contact error: {str(e)}")
-        return render_template('emergency_contacts.html', error=f'Error deleting contact: {str(e)}')
-
 @app.route("/sensorData")
 def sensor_data():
     print("Sensor data route accessed")
+    print(session['wallet_address'])
     try:
         # Get sensor data from request parameters
         temp = float(request.args.get('temp'))
