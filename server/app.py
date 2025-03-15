@@ -544,6 +544,7 @@ def delete_emergency_contact(index):
 
 @app.route("/sensorData")
 def sensor_data():
+    print("Sensor data route accessed")
     try:
         # Get sensor data from request parameters
         temp = float(request.args.get('temp'))
@@ -648,7 +649,7 @@ def sensor_data():
                 str(spo2),                           # _spo2
                 str(systolic),                       # _systolic
                 str(diastolic),                      # _diastolic
-                session['wallet_address']            # _wallet
+                str(session['wallet_address'])           # _wallet
             ).transact()
 
             return jsonify({
@@ -675,8 +676,10 @@ def sensor_data():
 @app.route('/notifications')
 @login_required
 def notifications():
+    print("Notifications route accessed")
     try:
         wallet_address = session['wallet_address']
+        print(f"Wallet address: {wallet_address}")
         notification_contract, _ = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
         
         # Get notifications from blockchain

@@ -25,7 +25,7 @@ const int channelID = 2839570;
 
 MAX30105 particleSensor;
 
-const char* apiRoute="http://172.20.10.2:2000/sensorData?temp=";
+const char* apiRoute="http://192.168.0.199:5000/sensorData?temp=";
 
 const byte RATE_SIZE = 4;
 byte rates[RATE_SIZE];
@@ -116,11 +116,11 @@ void loop() {
     temperature = sensors.getTempCByIndex(0);
 
     // Validate readings (Only continue if readings are valid)
-    if (!isValidReading(temperature, 20, 45) || !isValidReading(heartRate, 30, 200) || !isValidReading(spo2, 70, 100)) {
-        Serial.println("Invalid sensor readings. Please check the sensor.");
-        digitalWrite(ERROR_LED, HIGH);  // Turn on error LED
-        return;  // Exit loop if readings are invalid
-    }
+//    if (!isValidReading(temperature, 20, 45) || !isValidReading(heartRate, 30, 200) || !isValidReading(spo2, 70, 100)) {
+//        Serial.println("Invalid sensor readings. Please check the sensor.");
+//        digitalWrite(ERROR_LED, HIGH);  // Turn on error LED
+//        return;  // Exit loop if readings are invalid
+//    }
 
     // Filter and smooth out sensor readings
     filterReadings(&heartRate, &spo2, &temperature);
@@ -252,7 +252,7 @@ void estimateBloodPressure(float heartRate, float spo2) {
     systolic = 120 + (heartRate - 75) * 0.5;
     diastolic = 80 + (spo2 - 95) * 0.2;
 }
-void sendDataToApi(float temp, int hr, int spo2, float systolic, float diastolic) {
+void sendDataToApi(String temp, String hr, String spo2, String systolic, String diastolic) {
     if (WiFi.status() != WL_CONNECTED) {
         if (!connectWiFi()) {
             Serial.println("Failed to reconnect WiFi.");
