@@ -25,7 +25,7 @@ const int channelID = 2839570;
 
 MAX30105 particleSensor;
 
-const char* apiRoute="http://192.168.18.24:5000/sensorData?temp=";
+const char* apiRoute="http://192.168.112.24:5000/sensorData?temp=";
 
 const byte RATE_SIZE = 4;
 byte rates[RATE_SIZE];
@@ -143,6 +143,7 @@ void loop() {
 
   sendDataToThingSpeak(temperature,heartRate,spo2,systolic,diastolic);
   sendDataToApi(temperature,heartRate,spo2,systolic,diastolic);
+  delay(5000);
 }
 
 bool connectWiFi() {

@@ -23,9 +23,9 @@ app.secret_key = 'your_secret_key_here'  # Change this to a secure secret key
 
 # Blockchain configuration
 BLOCKCHAIN_SERVER = "http://127.0.0.1:7545"
-HEALTH_RECORD_ARTIFACT_PATH = "./build/contracts/HealthRecord.json"
-USER_MANAGEMENT_ARTIFACT_PATH = "./build/contracts/UserManagement.json"
-NOTIFICATION_SYSTEM_ARTIFACT_PATH = "./build/contracts/NotificationSystem.json"
+HEALTH_RECORD_ARTIFACT_PATH = "../build/contracts/HealthRecord.json"
+USER_MANAGEMENT_ARTIFACT_PATH = "../build/contracts/UserManagement.json"
+NOTIFICATION_SYSTEM_ARTIFACT_PATH = "../build/contracts/NotificationSystem.json"
 
 def connect_with_contract(wallet_address=None, artifact=USER_MANAGEMENT_ARTIFACT_PATH):
     try:
@@ -246,6 +246,8 @@ def complete_signup():
 def dashboard():
     try:
         wallet_address = session['wallet_address']
+        print("-----------------------------------------")
+        print(wallet_address)
         health_record_contract, health_web3 = connect_with_contract(wallet_address, HEALTH_RECORD_ARTIFACT_PATH)
         
         # Get latest health data
@@ -398,7 +400,6 @@ def update_profile():
 @app.route("/sensorData")
 def sensor_data():
     print("Sensor data route accessed")
-    print(session['wallet_address'])
     try:
         # Get sensor data from request parameters
         temp = float(request.args.get('temp'))
@@ -406,7 +407,7 @@ def sensor_data():
         spo2 = int(request.args.get('spo2'))
         systolic = float(request.args.get('systolic'))
         diastolic = float(request.args.get('diastolic'))
-        
+        wallet_address=request.args.get('wallet')
         # Validate parameters existence
         if not all([temp, hr, spo2, systolic, diastolic]):
             return jsonify({
@@ -479,12 +480,13 @@ def sensor_data():
             current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
             # Connect to notification contract
-            notification_contract, web3 = connect_with_contract(session['wallet_address'], NOTIFICATION_SYSTEM_ARTIFACT_PATH)
+            notification_contract, web3 = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
 
             # Add notifications for each abnormality
+            print(wallet_address)
             for abnormality in abnormalities:
                 notification_contract.functions.addNotification(
-                    session['wallet_address'],
+                    wallet_address,
                     abnormality['message'],
                     current_timestamp,
                     abnormality['parameter'],
@@ -493,7 +495,7 @@ def sensor_data():
                 ).transact()
 
             # Store sensor data in health record contract
-            health_contract, web3 = connect_with_contract(session['wallet_address'], HEALTH_RECORD_ARTIFACT_PATH)
+            health_contract, web3 = connect_with_contract(wallet_address, HEALTH_RECORD_ARTIFACT_PATH)
             
             # Convert numeric values to strings as per contract requirements
             tx_hash = health_contract.functions.addHealthRecord(
@@ -503,7 +505,8 @@ def sensor_data():
                 str(spo2),                           # _spo2
                 str(systolic),                       # _systolic
                 str(diastolic),                      # _diastolic
-                str(session['wallet_address'])           # _wallet
+                str(wallet_address)                  # Convert to string as per contract requirements
+           # _wallet
             ).transact()
 
             return jsonify({
@@ -530,10 +533,8 @@ def sensor_data():
 @app.route('/notifications')
 @login_required
 def notifications():
-    print("Notifications route accessed")
     try:
         wallet_address = session['wallet_address']
-        print(f"Wallet address: {wallet_address}")
         notification_contract, _ = connect_with_contract(wallet_address, NOTIFICATION_SYSTEM_ARTIFACT_PATH)
         
         # Get notifications from blockchain
@@ -541,35 +542,52 @@ def notifications():
             notification_contract.functions.getNotifications(wallet_address).call()
         )
         
-        # Format notifications
+        # Format notifications for template
         notifications = []
         for i in range(len(messages)):
-            notification_type = "alert" if warning_levels[i] == "HIGH" else (
-                "warning" if warning_levels[i] == "MEDIUM" else "info"
-            )
+            # Convert warning level to notification type
+            warning_level = warning_levels[i]
+            if warning_level == "HIGH":
+                notification_type = "alert"
+            elif warning_level == "MEDIUM":
+                notification_type = "warning"
+            else:
+                notification_type = "info"
+            
+            # Convert timestamp string to datetime and format
+            try:
+                # Assuming timestamp is in Unix timestamp format
+                timestamp = datetime.fromtimestamp(int(timestamps[i]))
+                formatted_time = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                # If timestamp is already in string format
+                formatted_time = timestamps[i]
             
             notifications.append({
                 'index': i,
                 'message': messages[i],
-                'timestamp': datetime.fromtimestamp(int(timestamps[i])).strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': formatted_time,
                 'abnormal_parameter': abnormal_params[i],
                 'parameter_value': param_values[i],
                 'type': notification_type,
                 'warning_level': warning_levels[i]
             })
-            
+        
         # Sort notifications by timestamp (newest first)
         notifications.sort(key=lambda x: x['timestamp'], reverse=True)
-                
-        return render_template('notifications.html', 
-                             notifications=notifications)
-                             
+        
+        return render_template(
+            'notifications.html',
+            notifications=notifications
+        )
+        
     except Exception as e:
         print(f"Notifications error: {str(e)}")
-        return render_template('notifications.html', 
-                             error=f'Error loading notifications: {str(e)}',
-                             notifications=[]
-                             )
+        return render_template(
+            'notifications.html',
+            error=f'Error loading notifications: {str(e)}',
+            notifications=[]
+        )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 
