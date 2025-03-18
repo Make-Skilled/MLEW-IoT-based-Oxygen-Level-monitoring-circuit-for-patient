@@ -9,6 +9,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <esp_sleep.h>
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 #define ONE_WIRE_BUS 4
 #define STATUS_LED 2
@@ -66,6 +68,11 @@ void setup() {
     Serial.begin(115200);
     Serial.println("Initializing sensors...");
 
+    lcd.init();
+    lcd.backlight();
+    lcd.setCursor(0, 0);
+    lcd.print("Initializing...");
+
     pinMode(STATUS_LED, OUTPUT);
     pinMode(ERROR_LED, OUTPUT);
     digitalWrite(STATUS_LED, LOW);
@@ -74,6 +81,8 @@ void setup() {
     // Initialize MAX30105 Pulse Oximeter
     if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) {
         Serial.println("MAX30105 sensor not found. Check wiring!");
+        lcd.clear();
+        lcd.print("Sensor Error!");
         while (1);
     }
     particleSensor.setup();
@@ -88,10 +97,14 @@ void setup() {
     if (!connectWiFi()) {
         Serial.println("Failed to connect to WiFi");
         digitalWrite(ERROR_LED, HIGH);
+        lcd.clear();
+        lcd.print("WiFi Error!");
         while (1);
     }
 
     Serial.println("Setup complete!");
+    lcd.clear();
+    lcd.print("Setup Complete");
 }
 
 #define SENSOR_BUFFER_SIZE 100  // Ensure this is defined, otherwise the code will fail
@@ -140,6 +153,18 @@ void loop() {
     Serial.print("/ ");
     Serial.print(diastolic);
     Serial.println(" mmHg");
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("HR:");
+    lcd.print(validHeartRate ? heartRate : -1);
+    lcd.print(" SpO2:");
+    lcd.print(validSPO2 ? spo2 : -1);
+    
+    lcd.setCursor(0, 1);
+    lcd.print("Temp:");
+    lcd.print(temperature);
+    lcd.print("C");
 
   sendDataToThingSpeak(temperature,heartRate,spo2,systolic,diastolic);
   sendDataToApi(temperature,heartRate,spo2,systolic,diastolic);
